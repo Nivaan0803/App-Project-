@@ -1,6 +1,6 @@
 import streamlit as st
 #
-# Upgrade Python package manager:
+# Upgrade Python packages manager:
 # python.exe -m pip install --upgrade pip
 #
 # Install all the required libraries:
@@ -15,6 +15,4 @@ import streamlit as st
 st.title("Cognitive Support App") # think of a good title
 st.header("Daily Check-in")
 mood = st.slider("How do you feel today?", 1, 5)
-
-
 
