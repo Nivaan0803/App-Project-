@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Book">
+  <rect width="200" height="200" fill="#f7f1e3" rx="12"/>
+  <rect x="55" y="50" width="90" height="105" fill="#cf7c4d" rx="4"/>
+  <rect x="60" y="55" width="38" height="95" fill="#f4d7bf" rx="2"/>
+  <rect x="102" y="55" width="38" height="95" fill="#7ea37f" opacity="0.4" rx="2"/>
+  <line x1="99" y1="55" x2="99" y2="150" stroke="#25424d" stroke-width="2"/>
+</svg>

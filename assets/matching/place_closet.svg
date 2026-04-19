@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Closet">
+  <rect width="200" height="200" fill="#f7f1e3" rx="12"/>
+  <rect x="45" y="50" width="110" height="115" fill="#d4c4b0" stroke="#a89480" stroke-width="2" rx="2"/>
+  <line x1="100" y1="50" x2="100" y2="165" stroke="#a89480" stroke-width="2"/>
+  <circle cx="92" cy="108" r="4" fill="#cf7c4d"/>
+  <circle cx="108" cy="108" r="4" fill="#cf7c4d"/>
+  <path d="M60 70 Q100 55 140 70" fill="none" stroke="#7ea37f" stroke-width="3"/>
+  <text x="100" y="40" text-anchor="middle" font-family="Lexend,sans-serif" font-size="14" fill="#25424d">Closet</text>
+</svg>

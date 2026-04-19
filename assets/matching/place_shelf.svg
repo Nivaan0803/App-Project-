@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Shelf">
+  <rect width="200" height="200" fill="#f7f1e3" rx="12"/>
+  <rect x="35" y="130" width="130" height="10" fill="#8b6914" rx="2"/>
+  <rect x="35" y="95" width="130" height="10" fill="#8b6914" rx="2"/>
+  <rect x="35" y="60" width="130" height="10" fill="#8b6914" rx="2"/>
+  <rect x="45" y="68" width="25" height="22" fill="#cf7c4d" opacity="0.6" rx="2"/>
+  <rect x="130" y="103" width="28" height="22" fill="#7ea37f" opacity="0.5" rx="2"/>
+  <text x="100" y="42" text-anchor="middle" font-family="Lexend,sans-serif" font-size="14" fill="#25424d">Shelf</text>
+</svg>

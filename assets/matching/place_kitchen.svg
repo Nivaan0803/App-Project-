@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Kitchen">
+  <rect width="200" height="200" fill="#f7f1e3" rx="12"/>
+  <rect x="40" y="70" width="120" height="85" fill="#e8dfd0" stroke="#d8cfbf" stroke-width="2" rx="4"/>
+  <rect x="50" y="80" width="45" height="35" fill="#7ea37f" opacity="0.35" rx="2"/>
+  <circle cx="135" cy="98" r="18" fill="#c0c0c0" stroke="#8a8a8a"/>
+  <rect x="85" y="125" width="70" height="22" fill="#cf7c4d" rx="3"/>
+  <text x="100" y="55" text-anchor="middle" font-family="Lexend,sans-serif" font-size="14" fill="#25424d">Kitchen</text>
+</svg>

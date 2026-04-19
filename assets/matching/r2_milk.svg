@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Milk carton">
+  <rect width="200" height="200" fill="#f7f1e3" rx="12"/>
+  <path d="M70 60 L130 60 L125 155 L75 155 Z" fill="#f5f5f5" stroke="#c8c8c8" stroke-width="2"/>
+  <path d="M70 60 L100 45 L130 60" fill="#e8e8e8" stroke="#c8c8c8" stroke-width="2"/>
+  <text x="100" y="118" text-anchor="middle" font-family="Lexend,sans-serif" font-size="13" fill="#55707b">milk</text>
+</svg>

@@ -5,6 +5,8 @@ import re
 from datetime import datetime
 from pathlib import Path
 
+from ui_preferences import default_settings, normalize_settings
+
 
 DATA_FILE = Path(__file__).with_name("users.json")
 BAD_WORDS = ("damn", "hell", "stupid", "idiot", "dumb", "crap")
@@ -17,6 +19,7 @@ def default_progress():
         "last_check_in": {},
         "history": [],
         "reminders": [],
+        "calendar_events": [],
         "activity_history": [],
     }
 
@@ -28,6 +31,7 @@ def default_profile():
         "support_email": "",
         "support_phone": "",
         "loved_ones": [],
+        "settings": default_settings(),
     }
 
 
@@ -36,9 +40,11 @@ def normalize_user_record(user):
     normalized.setdefault("email", "")
     normalized["profile"] = {**default_profile(), **normalized.get("profile", {})}
     normalized["profile"]["loved_ones"] = normalized["profile"].get("loved_ones", [])[:12]
+    normalized["profile"]["settings"] = normalize_settings(normalized["profile"].get("settings", {}))
     progress = {**default_progress(), **normalized.get("progress", {})}
     progress["history"] = progress.get("history", [])[:10]
     progress["reminders"] = progress.get("reminders", [])
+    progress["calendar_events"] = progress.get("calendar_events", [])[:48]
     progress["activity_history"] = progress.get("activity_history", [])[:12]
     normalized["progress"] = progress
     return normalized
@@ -220,6 +226,41 @@ def save_reminders(username, reminders):
     return True
 
 
+def save_calendar_events(username, events):
+    users = _read_users()
+    normalized_username = username.strip().lower()
+    user = users.get(normalized_username)
+
+    if not user:
+        return False
+
+    cleaned_events = []
+    for index, event in enumerate(events):
+        title = sanitize_text(event.get("title", "").strip())
+        event_date = event.get("date", "").strip()
+        start_time = event.get("start_time", "").strip()
+        end_time = event.get("end_time", "").strip()
+        color = event.get("color", "").strip() or "#4d8f7a"
+        note = sanitize_text(event.get("note", "").strip())
+
+        if title and event_date and start_time:
+            cleaned_events.append(
+                {
+                    "id": event.get("id") or f"{normalized_username}-{index}-{event_date}-{start_time}",
+                    "title": title,
+                    "date": event_date,
+                    "start_time": start_time,
+                    "end_time": end_time,
+                    "color": color,
+                    "note": note,
+                }
+            )
+
+    user.setdefault("progress", default_progress())["calendar_events"] = cleaned_events[:48]
+    _write_users(users)
+    return True
+
+
 def save_profile(username, role, support_name, support_email, support_phone):
     users = _read_users()
     normalized_username = username.strip().lower()
@@ -228,11 +269,31 @@ def save_profile(username, role, support_name, support_email, support_phone):
     if not user:
         return False
 
+    profile = {**default_profile(), **user.get("profile", {})}
     user["profile"] = {
         "role": role.strip().lower() or "senior",
         "support_name": sanitize_text(support_name.strip()),
         "support_email": support_email.strip().lower(),
         "support_phone": support_phone.strip(),
+        "loved_ones": profile.get("loved_ones", []),
+        "settings": normalize_settings(profile.get("settings", {})),
+    }
+    _write_users(users)
+    return True
+
+
+def save_settings(username, settings):
+    users = _read_users()
+    normalized_username = username.strip().lower()
+    user = users.get(normalized_username)
+
+    if not user:
+        return False
+
+    profile = {**default_profile(), **user.get("profile", {})}
+    user["profile"] = {
+        **profile,
+        "settings": normalize_settings(settings),
     }
     _write_users(users)
     return True

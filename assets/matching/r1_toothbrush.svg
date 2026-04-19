@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Toothbrush">
+  <rect width="200" height="200" fill="#f7f1e3" rx="12"/>
+  <rect x="55" y="40" width="90" height="28" fill="#e8dfd0" rx="6"/>
+  <rect x="40" y="72" width="120" height="88" fill="#7ea37f" rx="10"/>
+  <line x1="55" y1="88" x2="145" y2="88" stroke="#5c7d5d" stroke-width="2"/>
+  <line x1="55" y1="108" x2="145" y2="108" stroke="#5c7d5d" stroke-width="2"/>
+  <line x1="55" y1="128" x2="145" y2="128" stroke="#5c7d5d" stroke-width="2"/>
+  <rect x="75" y="155" width="50" height="28" fill="#cf7c4d" rx="6"/>
+</svg>

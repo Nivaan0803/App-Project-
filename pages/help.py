@@ -26,8 +26,8 @@ def apply_styles():
         }
 
         .block-container {
-            max-width: 920px;
-            padding-top: 2rem;
+            max-width: 980px;
+            padding-top: 1.55rem;
             padding-bottom: 3rem;
         }
 
@@ -35,8 +35,8 @@ def apply_styles():
             background: rgba(255,255,255,0.96);
             border: 1px solid #e6ccc4;
             border-radius: 30px;
-            padding: 1.4rem;
-            box-shadow: 0 20px 48px rgba(125, 69, 57, 0.1);
+            padding: 1.6rem;
+            box-shadow: 0 22px 54px rgba(125, 69, 57, 0.1);
         }
 
         .nav-card {
@@ -61,15 +61,16 @@ def apply_styles():
         .hero-title {
             font-family: 'Nunito', sans-serif;
             color: #872618;
-            font-size: 2.45rem;
+            font-size: 2.7rem;
             font-weight: 800;
             margin-bottom: 0.2rem;
         }
 
         .hero-copy {
             color: #7b4d43;
-            font-size: 1.05rem;
+            font-size: 1.1rem;
             margin-bottom: 1rem;
+            max-width: 40rem;
         }
 
         .help-card {
@@ -98,9 +99,10 @@ def apply_styles():
             text-align: center;
             text-decoration: none;
             font-weight: 800;
-            border-radius: 20px;
-            padding: 1rem 1.2rem;
+            border-radius: 22px;
+            padding: 1.15rem 1.25rem;
             margin-bottom: 0.75rem;
+            font-size: 1.08rem;
             transition: transform 0.16s ease, box-shadow 0.18s ease;
         }
 
@@ -129,9 +131,29 @@ def apply_styles():
         .section-card {
             background: rgba(255,255,255,0.97);
             border: 1px solid #ecd6cf;
-            border-radius: 24px;
-            padding: 1rem 1.1rem;
+            border-radius: 26px;
+            padding: 1.15rem 1.2rem;
             margin-bottom: 1rem;
+        }
+
+        .stButton > button, .stFormSubmitButton > button {
+            border-radius: 18px;
+            min-height: 3.35rem;
+            font-size: 1.03rem;
+            font-weight: 700;
+        }
+
+        div[data-baseweb="input"] > div,
+        .stTextArea textarea {
+            min-height: 3.2rem !important;
+            border-radius: 18px !important;
+            font-size: 1.02rem !important;
+            background: #fffdf9 !important;
+        }
+
+        .stTextArea textarea {
+            min-height: 130px !important;
+            padding-top: 0.95rem !important;
         }
         </style>
         """,
@@ -225,7 +247,7 @@ def main():
     st.markdown("<div class='eyebrow'>Emergency support page</div>", unsafe_allow_html=True)
     st.markdown("<div class='hero-title'>Help</div>", unsafe_allow_html=True)
     st.markdown(
-        "<div class='hero-copy'>This page is for quick contact with family or a caregiver. You can take a picture, then call or message your support person.</div>",
+        "<div class='hero-copy'>Quick ways to call, message, or email a trusted support person.</div>",
         unsafe_allow_html=True,
     )
 
@@ -257,8 +279,8 @@ def main():
     st.markdown("<div class='section-card'>", unsafe_allow_html=True)
     st.subheader("What to do next")
     st.write("1. Press the red call button if you need someone right away.")
-    st.write("2. Use the message button if you want to send a quick note first.")
-    st.write("3. Keep the picture open so your support person can see what is wrong when they contact you.")
+    st.write("2. Use the message button for a quick note.")
+    st.write("3. Keep the picture open if it helps explain the problem.")
     st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("</div>", unsafe_allow_html=True)

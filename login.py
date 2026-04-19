@@ -1,4 +1,5 @@
 import base64
+import os
 import random
 import time
 from datetime import datetime
@@ -16,6 +17,11 @@ from auth_store import (
     save_activity_progress,
     save_reminders,
 )
+from ui_preferences import default_settings, get_theme, normalize_settings
+
+
+def _asset_path(relative_path: str) -> str:
+    return os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), relative_path))
 
 
 ACTIVITIES = {
@@ -64,13 +70,23 @@ ACTIVITIES = {
         ],
         "success": "Memory game saved.",
     },
-    "Matching Game": {
+    "Memory Match": {
         "type": "matching",
-        "prompt": "Match each item to the place or idea that fits best.",
+        "prompt": "Match each picture on the left to the place it belongs. Use the place pictures below as a guide.",
         "sets": [
             {
                 "left": ["Toothbrush", "Pillow", "Spoon"],
+                "left_images": [
+                    "assets/matching/r1_toothbrush.svg",
+                    "assets/matching/r1_pillow.svg",
+                    "assets/matching/r1_spoon.svg",
+                ],
                 "right": ["Bed", "Kitchen", "Bathroom"],
+                "right_images": [
+                    "assets/matching/place_bed.svg",
+                    "assets/matching/place_kitchen.svg",
+                    "assets/matching/place_bathroom.svg",
+                ],
                 "answers": {
                     "Toothbrush": "Bathroom",
                     "Pillow": "Bed",
@@ -79,7 +95,17 @@ ACTIVITIES = {
             },
             {
                 "left": ["Coat", "Milk", "Book"],
+                "left_images": [
+                    "assets/matching/r2_coat.svg",
+                    "assets/matching/r2_milk.svg",
+                    "assets/matching/r2_book.svg",
+                ],
                 "right": ["Refrigerator", "Shelf", "Closet"],
+                "right_images": [
+                    "assets/matching/place_fridge.svg",
+                    "assets/matching/place_shelf.svg",
+                    "assets/matching/place_closet.svg",
+                ],
                 "answers": {
                     "Coat": "Closet",
                     "Milk": "Refrigerator",
@@ -88,7 +114,17 @@ ACTIVITIES = {
             },
             {
                 "left": ["Soap", "Plate", "Blanket"],
+                "left_images": [
+                    "assets/matching/r3_soap.svg",
+                    "assets/matching/r3_plate.svg",
+                    "assets/matching/r3_blanket.svg",
+                ],
                 "right": ["Bathroom", "Bed", "Table"],
+                "right_images": [
+                    "assets/matching/place_bathroom.svg",
+                    "assets/matching/place_bed.svg",
+                    "assets/matching/place_table.svg",
+                ],
                 "answers": {
                     "Soap": "Bathroom",
                     "Plate": "Table",
@@ -96,7 +132,7 @@ ACTIVITIES = {
                 },
             },
         ],
-        "success": "Matching game saved.",
+        "success": "Memory Match saved.",
     },
 }
 
@@ -204,17 +240,24 @@ def init_session():
     st.session_state.setdefault("puzzle_round", 0)
     st.session_state.setdefault("memory_game_started", False)
     st.session_state.setdefault("memory_game_ready", False)
+    st.session_state.setdefault("background_theme", default_settings()["background_theme"])
+    st.session_state.setdefault("familiar_greeting", default_settings()["familiar_greeting"])
+    st.session_state.setdefault("show_familiar_greeting", default_settings()["show_familiar_greeting"])
+    st.session_state.setdefault("text_size", default_settings()["text_size"])
 
 
 def apply_styles():
-    st.markdown(
-        """
+    theme = get_theme(st.session_state.get("background_theme", default_settings()["background_theme"]))
+    text_size = st.session_state.get("text_size", "Standard")
+    body_font_size = "1.06rem" if text_size == "Large" else "1rem"
+    title_scale = "3.05rem" if text_size == "Large" else "2.85rem"
+    css = """
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&family=Nunito:wght@600;700&display=swap');
 
         :root {
-            --bg-top: #f3efe2;
-            --bg-bottom: #fcfaf5;
+            --bg-top: __BG_TOP__;
+            --bg-bottom: __BG_BOTTOM__;
             --panel: rgba(255, 255, 255, 0.94);
             --panel-soft: #f7f1e3;
             --line: #d8cfbf;
@@ -227,17 +270,18 @@ def apply_styles():
 
         .stApp {
             background:
-                radial-gradient(circle at top left, rgba(244, 215, 191, 0.85), transparent 28%),
-                radial-gradient(circle at top right, rgba(126, 163, 127, 0.18), transparent 22%),
+                radial-gradient(circle at top left, __GLOW_LEFT__, transparent 28%),
+                radial-gradient(circle at top right, __GLOW_RIGHT__, transparent 22%),
                 linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
             color: var(--ink);
             font-family: 'Lexend', sans-serif;
+            font-size: __BODY_SIZE__;
         }
 
         .block-container {
-            padding-top: 2rem;
+            padding-top: 1.55rem;
             padding-bottom: 3rem;
-            max-width: 1040px;
+            max-width: 1120px;
         }
 
         h1, h2, h3, .stTabs [data-baseweb="tab"] {
@@ -248,14 +292,14 @@ def apply_styles():
         .hero {
             background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(247, 241, 227, 0.92));
             border: 1px solid var(--line);
-            border-radius: 28px;
-            padding: 1.5rem 1.5rem 1.3rem 1.5rem;
-            box-shadow: 0 20px 50px rgba(63, 74, 62, 0.08);
+            border-radius: 30px;
+            padding: 1.65rem 1.65rem 1.45rem 1.65rem;
+            box-shadow: 0 22px 54px rgba(63, 74, 62, 0.09);
             margin-bottom: 1rem;
         }
 
         .hero-title {
-            font-size: 2.5rem;
+            font-size: __TITLE_SCALE__;
             font-weight: 800;
             margin-bottom: 0.35rem;
             line-height: 1.05;
@@ -263,17 +307,17 @@ def apply_styles():
 
         .hero-copy {
             color: var(--muted);
-            font-size: 1.1rem;
-            max-width: 46rem;
+            font-size: 1.12rem;
+            max-width: 48rem;
         }
 
         .card {
             background: var(--panel);
             border: 1px solid var(--line);
-            border-radius: 24px;
-            padding: 1rem 1.1rem;
+            border-radius: 26px;
+            padding: 1.2rem 1.25rem;
             margin-bottom: 1rem;
-            box-shadow: 0 10px 28px rgba(63, 74, 62, 0.06);
+            box-shadow: 0 12px 32px rgba(63, 74, 62, 0.07);
         }
 
         .pill {
@@ -288,27 +332,139 @@ def apply_styles():
         }
 
         .reminder-row {
-            background: var(--panel-soft);
-            border-radius: 18px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247, 241, 227, 0.92));
+            border-radius: 22px;
             border: 1px solid #eadfcf;
-            padding: 0.8rem 0.95rem;
-            margin-bottom: 0.75rem;
+            border-left: 10px solid #d98b3a;
+            padding: 1rem 1.05rem;
+            margin-bottom: 0.85rem;
+            box-shadow: 0 10px 24px rgba(63, 74, 62, 0.06);
         }
 
         .reminder-time {
             color: #8c4d25;
-            font-size: 1.15rem;
-            font-weight: 700;
+            font-size: 1.18rem;
+            font-weight: 800;
+            margin-bottom: 0.15rem;
         }
 
         .reminder-title {
             color: var(--ink);
-            font-size: 1.05rem;
-            font-weight: 700;
+            font-size: 1.08rem;
+            font-weight: 800;
+            margin-bottom: 0.1rem;
         }
 
         .quiet {
             color: var(--muted);
+        }
+
+        .snapshot-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.9rem;
+            margin-top: 0.7rem;
+            margin-bottom: 1rem;
+        }
+
+        .snapshot-card {
+            background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247, 241, 227, 0.92));
+            border: 1px solid #e2d8c8;
+            border-radius: 22px;
+            padding: 1rem 1.05rem;
+            box-shadow: 0 10px 24px rgba(63, 74, 62, 0.05);
+        }
+
+        .snapshot-label {
+            color: #7c6a58;
+            font-size: 0.9rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.22rem;
+        }
+
+        .snapshot-value {
+            color: var(--ink);
+            font-family: 'Nunito', sans-serif;
+            font-size: 2rem;
+            font-weight: 800;
+            line-height: 1.05;
+        }
+
+        .contact-strip {
+            background: rgba(255,255,255,0.84);
+            border: 1px solid #e5dbcb;
+            border-radius: 18px;
+            padding: 0.95rem 1rem;
+            margin-top: 0.25rem;
+        }
+
+        .contact-name {
+            color: var(--ink);
+            font-weight: 800;
+            margin-bottom: 0.18rem;
+        }
+
+        .contact-meta {
+            color: var(--muted);
+            font-size: 0.95rem;
+        }
+
+        @media (max-width: 900px) {
+            .snapshot-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .history-list {
+            display: grid;
+            gap: 0.8rem;
+            margin-top: 0.4rem;
+        }
+
+        .history-item {
+            background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(247, 241, 227, 0.82));
+            border: 1px solid #e3d8c7;
+            border-radius: 20px;
+            padding: 0.95rem 1rem;
+            box-shadow: 0 10px 22px rgba(63, 74, 62, 0.05);
+        }
+
+        .history-topline {
+            color: var(--ink);
+            font-weight: 800;
+            font-size: 1rem;
+            margin-bottom: 0.15rem;
+        }
+
+        .history-meta {
+            color: #8c5a30;
+            font-size: 0.92rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .history-note {
+            color: var(--muted);
+            font-size: 0.98rem;
+            line-height: 1.45;
+        }
+
+        .footer-action {
+            background: linear-gradient(180deg, rgba(255,255,255,0.97), rgba(247, 241, 227, 0.88));
+            border: 1px solid var(--line);
+            border-radius: 24px;
+            padding: 1rem;
+            margin-top: 0.2rem;
+            box-shadow: 0 12px 28px rgba(63, 74, 62, 0.06);
+        }
+
+        .footer-copy {
+            color: var(--muted);
+            text-align: center;
+            font-size: 0.98rem;
+            margin-bottom: 0.75rem;
         }
 
         .success-glow {
@@ -344,8 +500,9 @@ def apply_styles():
         }
 
         .stButton > button, .stFormSubmitButton > button {
-            border-radius: 16px;
-            min-height: 3rem;
+            border-radius: 18px;
+            min-height: 3.35rem;
+            font-size: 1.03rem;
             font-weight: 700;
             border: none;
             transition: transform 0.16s ease, box-shadow 0.18s ease, filter 0.18s ease, background-color 0.18s ease;
@@ -394,8 +551,9 @@ def apply_styles():
         .stTabs [data-baseweb="tab"] {
             background: rgba(255,255,255,0.8);
             border: 1px solid var(--line);
-            border-radius: 16px;
-            padding: 0.75rem 1rem;
+            border-radius: 18px;
+            padding: 0.95rem 1.15rem;
+            font-size: 1.03rem;
             transition: transform 0.16s ease, box-shadow 0.18s ease, border-color 0.18s ease;
         }
 
@@ -403,8 +561,37 @@ def apply_styles():
             transform: translateY(-1px);
             box-shadow: 0 10px 18px rgba(37, 66, 77, 0.08);
         }
+
+        div[data-baseweb="input"] > div,
+        div[data-baseweb="select"] > div,
+        .stDateInput > div > div,
+        .stTextArea textarea {
+            min-height: 3.25rem !important;
+            border-radius: 18px !important;
+            font-size: 1.02rem !important;
+            background: #fffdf9 !important;
+        }
+
+        .stTextArea textarea {
+            min-height: 130px !important;
+            padding-top: 0.95rem !important;
+        }
+
+        label, .stMarkdown p, .stCaption {
+            font-size: 1rem !important;
+        }
         </style>
-        """,
+        """
+    css = (
+        css.replace("__BG_TOP__", theme["bg_top"])
+        .replace("__BG_BOTTOM__", theme["bg_bottom"])
+        .replace("__GLOW_LEFT__", theme["glow_left"])
+        .replace("__GLOW_RIGHT__", theme["glow_right"])
+        .replace("__BODY_SIZE__", body_font_size)
+        .replace("__TITLE_SCALE__", title_scale)
+    )
+    st.markdown(
+        css,
         unsafe_allow_html=True,
     )
 
@@ -495,6 +682,26 @@ def parse_reminder_time(value):
         return datetime.max
 
 
+def parse_time_label(value, fallback):
+    raw_value = value or fallback
+    try:
+        parsed = datetime.strptime(raw_value, "%I:%M %p")
+        return parsed.strftime("%I:%M %p")
+    except ValueError:
+        return datetime.strptime(fallback, "%I:%M %p").strftime("%I:%M %p")
+
+
+def render_time_picker(prefix, label, default_value):
+    normalized_default = parse_time_label(default_value, "06:00 PM")
+    time_options = [
+        datetime.strptime(f"{hour:02d}:{minute:02d}", "%H:%M").strftime("%I:%M %p")
+        for hour in range(24)
+        for minute in (0, 30)
+    ]
+    default_index = time_options.index(normalized_default) if normalized_default in time_options else time_options.index("06:00 PM")
+    return st.selectbox(label, time_options, index=default_index, key=f"{prefix}_time")
+
+
 def render_hero(title, copy):
     st.markdown(
         f"""
@@ -506,6 +713,14 @@ def render_hero(title, copy):
         """,
         unsafe_allow_html=True,
     )
+
+
+def apply_user_settings(user):
+    settings = normalize_settings(user.get("profile", {}).get("settings", {}))
+    st.session_state.background_theme = settings["background_theme"]
+    st.session_state.familiar_greeting = settings["familiar_greeting"]
+    st.session_state.show_familiar_greeting = settings["show_familiar_greeting"]
+    st.session_state.text_size = settings["text_size"]
 
 
 def login_view():
@@ -534,6 +749,7 @@ def login_view():
             st.session_state.full_name = user["full_name"]
             st.session_state.email = user.get("email", "")
             st.session_state.pending_email = ""
+            apply_user_settings(user)
             st.success("Login successful.")
             st.rerun()
         else:
@@ -550,12 +766,29 @@ def render_today_snapshot(user):
 
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.subheader("Today at a glance")
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Today", datetime.now().strftime("%B %d"))
-    col2.metric("Time of day", format_part_of_day())
-    col3.metric("Reminders", len(reminders))
-    st.write(f"Support contact: **{support_name}**")
-    st.caption(f"{support_email} | {support_phone or 'No support phone saved yet'}")
+    st.markdown(
+        f"""
+        <div class='snapshot-grid'>
+            <div class='snapshot-card'>
+                <div class='snapshot-label'>Today</div>
+                <div class='snapshot-value'>{datetime.now().strftime("%B %d")}</div>
+            </div>
+            <div class='snapshot-card'>
+                <div class='snapshot-label'>Time of day</div>
+                <div class='snapshot-value'>{format_part_of_day()}</div>
+            </div>
+            <div class='snapshot-card'>
+                <div class='snapshot-label'>Reminders</div>
+                <div class='snapshot-value'>{len(reminders)}</div>
+            </div>
+        </div>
+        <div class='contact-strip'>
+            <div class='contact-name'>Support contact: {support_name}</div>
+            <div class='contact-meta'>{support_email} | {support_phone or 'No support phone saved yet'}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
     st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("<div class='card'>", unsafe_allow_html=True)
@@ -764,15 +997,31 @@ def render_activities(user):
     elif activity["type"] == "matching":
         round_index = st.session_state.get("matching_game_round", 0) % len(activity["sets"])
         game = activity["sets"][round_index]
+        left_images = game.get("left_images") or []
+        right_images = game.get("right_images") or []
         with st.form("activity_matching_form"):
-            st.write("Choose the best match for each item.")
+            st.caption("Choose the best place for each picture.")
+            if right_images and len(right_images) == len(game["right"]):
+                st.markdown("**Places to choose from**")
+                legend_cols = st.columns(len(game["right"]))
+                for i, place in enumerate(game["right"]):
+                    with legend_cols[i]:
+                        st.image(_asset_path(right_images[i]), use_container_width=True)
+                        st.caption(place)
             selections = {}
-            for item in game["left"]:
-                selections[item] = st.selectbox(
-                    item,
-                    game["right"],
-                    key=f"match_{round_index}_{item}",
-                )
+            for j, item in enumerate(game["left"]):
+                row = st.columns([1, 1.15])
+                with row[0]:
+                    if j < len(left_images):
+                        st.image(_asset_path(left_images[j]), use_container_width=True)
+                    st.caption(item)
+                with row[1]:
+                    selections[item] = st.selectbox(
+                        f"Where does {item} belong?",
+                        game["right"],
+                        key=f"match_{round_index}_{item}",
+                        label_visibility="visible",
+                    )
             submitted = st.form_submit_button("Complete Activity", use_container_width=True)
 
         if submitted:
@@ -857,12 +1106,19 @@ def render_recent_history(user):
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.subheader("Recent check-ins")
     if history:
+        st.markdown("<div class='history-list'>", unsafe_allow_html=True)
         for item in history[:5]:
-            st.write(
-                f"**{item.get('saved_at', 'N/A')}** | Mood {item.get('mood', 'N/A')} | "
-                f"{item.get('challenge_name', 'N/A')}"
+            st.markdown(
+                f"""
+                <div class='history-item'>
+                    <div class='history-topline'>{item.get('challenge_name', 'Check-in')}</div>
+                    <div class='history-meta'>{item.get('saved_at', 'N/A')} | Mood {item.get('mood', 'N/A')}</div>
+                    <div class='history-note'>{item.get('challenge_response', '') or 'No note saved.'}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
             )
-            st.caption(item.get("challenge_response", ""))
+        st.markdown("</div>", unsafe_allow_html=True)
     else:
         st.write("No check-ins saved yet.")
     st.markdown("</div>", unsafe_allow_html=True)
@@ -969,8 +1225,8 @@ def render_family_tools(user):
                 key=f"title_{index}",
                 placeholder="Dinner time",
             )
-            default_time = datetime.strptime(existing.get("time", "06:00 PM"), "%I:%M %p").time() if existing.get("time") else datetime.strptime("06:00 PM", "%I:%M %p").time()
-            reminder_time = col2.time_input("Time", value=default_time, key=f"time_{index}", step=1800)
+            with col2:
+                reminder_time = render_time_picker(f"time_{index}", "Time", existing.get("time", "06:00 PM"))
             note = st.text_input(
                 "Helpful note",
                 value=existing.get("note", ""),
@@ -980,7 +1236,7 @@ def render_family_tools(user):
             reminder_entries.append(
                 {
                     "title": title,
-                    "time": reminder_time.strftime("%I:%M %p"),
+                    "time": reminder_time,
                     "note": note,
                 }
             )
@@ -998,11 +1254,24 @@ def render_family_tools(user):
 def dashboard_view():
     user = get_user(st.session_state.username)
     progress = user.get("progress", {}) if user else {}
+    if user:
+        apply_user_settings(user)
 
     render_hero(
         f"Welcome, {st.session_state.full_name}",
         "This dashboard keeps everyday routines visible and calm. Open reminders, save a short check-in, and use the puzzle corner whenever it feels helpful.",
     )
+    familiar_greeting = st.session_state.get("familiar_greeting", "").strip()
+    if st.session_state.get("show_familiar_greeting", True) and familiar_greeting:
+        st.markdown(
+            f"""
+            <div class='card' style="background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(244, 215, 191, 0.82));">
+                <div class='pill'>Familiar greeting</div>
+                <div style="font-family: 'Nunito', sans-serif; font-size: 1.8rem; font-weight: 800; color: #25424d;">{familiar_greeting}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     col1, col2, col3 = st.columns(3)
     col1.metric("Check-ins saved", progress.get("total_sessions", 0))
@@ -1023,13 +1292,25 @@ def dashboard_view():
     with tab3:
         render_family_tools(user)
 
+    st.markdown(
+        """
+        <div class='footer-action'>
+            <div class='footer-copy'>When you are finished, you can safely sign out here.</div>
+        """,
+        unsafe_allow_html=True,
+    )
     if st.button("Log Out", use_container_width=True):
         st.session_state.logged_in = False
         st.session_state.username = ""
         st.session_state.full_name = ""
         st.session_state.email = ""
         st.session_state.pending_email = ""
+        st.session_state.background_theme = default_settings()["background_theme"]
+        st.session_state.familiar_greeting = default_settings()["familiar_greeting"]
+        st.session_state.show_familiar_greeting = default_settings()["show_familiar_greeting"]
+        st.session_state.text_size = default_settings()["text_size"]
         st.rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
 
 
 def main():

@@ -40,17 +40,18 @@ def apply_sidebar_styles():
         section[data-testid="stSidebar"] [data-testid="stSidebarNav"] a {
             background: #ffffff;
             border: 1px solid #ddd4c4;
-            border-radius: 16px;
-            margin-bottom: 0.45rem;
-            padding: 0.55rem 0.7rem;
+            border-radius: 20px;
+            margin-bottom: 0.6rem;
+            padding: 0.8rem 0.85rem;
             color: #27424a;
-            box-shadow: 0 8px 20px rgba(49, 63, 60, 0.05);
+            min-height: 3.4rem;
+            box-shadow: 0 10px 24px rgba(49, 63, 60, 0.06);
         }
 
         section[data-testid="stSidebar"] [data-testid="stSidebarNav"] a span {
             color: #27424a !important;
             font-weight: 900 !important;
-            font-size: 1rem !important;
+            font-size: 1.08rem !important;
             letter-spacing: 0.06em;
             text-transform: uppercase;
         }
@@ -86,15 +87,18 @@ def main():
     )
     apply_sidebar_styles()
 
-    account_pages = [
-        st.Page("login.py", title="LOGIN", icon=":material/login:"),
-        st.Page("pages/sign_up.py", title="SIGN UP", icon=":material/person_add:"),
-    ]
+    account_pages = []
 
     support_pages = []
     if st.session_state.logged_in:
+        account_pages.append(st.Page("login.py", title="DASHBOARD", icon=":material/dashboard:"))
+        account_pages.append(st.Page("pages/calendar.py", title="CALENDAR", icon=":material/calendar_month:"))
+        account_pages.append(st.Page("pages/settings.py", title="SETTINGS", icon=":material/settings:"))
         support_pages.append(st.Page("pages/help.py", title="HELP", icon=":material/emergency_home:"))
         support_pages.append(st.Page("pages/where_am_i.py", title="WHERE AM I?", icon=":material/pin_drop:"))
+    else:
+        account_pages.append(st.Page("login.py", title="LOGIN", icon=":material/login:"))
+        account_pages.append(st.Page("pages/sign_up.py", title="SIGN UP", icon=":material/person_add:"))
 
     navigation = st.navigation(
         {

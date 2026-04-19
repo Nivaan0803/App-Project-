@@ -32,17 +32,17 @@ def apply_styles():
         }
 
         .block-container {
-            max-width: 860px;
-            padding-top: 2rem;
+            max-width: 920px;
+            padding-top: 1.6rem;
             padding-bottom: 3rem;
         }
 
         .signup-shell {
-            background: rgba(255,255,255,0.94);
+            background: rgba(255,255,255,0.95);
             border: 1px solid #d8cfbf;
-            border-radius: 28px;
-            padding: 1.5rem;
-            box-shadow: 0 18px 45px rgba(63, 74, 62, 0.08);
+            border-radius: 30px;
+            padding: 1.7rem;
+            box-shadow: 0 22px 52px rgba(63, 74, 62, 0.09);
         }
 
         .eyebrow {
@@ -58,7 +58,7 @@ def apply_styles():
 
         .hero-title {
             font-family: 'Nunito', sans-serif;
-            font-size: 2.2rem;
+            font-size: 2.6rem;
             font-weight: 800;
             color: #25424d;
             margin-bottom: 0.3rem;
@@ -66,16 +66,30 @@ def apply_styles():
 
         .hero-copy {
             color: #55707b;
+            font-size: 1.08rem;
             margin-bottom: 1rem;
+            max-width: 42rem;
         }
 
         .stButton > button, .stFormSubmitButton > button {
-            border-radius: 16px;
-            min-height: 3rem;
+            border-radius: 18px;
+            min-height: 3.35rem;
+            font-size: 1.04rem;
             font-weight: 700;
             border: none;
             transition: transform 0.16s ease, box-shadow 0.18s ease, filter 0.18s ease;
             box-shadow: 0 8px 18px rgba(37, 66, 77, 0.08);
+        }
+
+        div[data-baseweb="input"] > div {
+            min-height: 3.3rem !important;
+            border-radius: 18px !important;
+            font-size: 1.02rem !important;
+            background: #fffdf9 !important;
+        }
+
+        label, .stMarkdown p {
+            font-size: 1rem !important;
         }
 
         .stButton > button:hover, .stFormSubmitButton > button:hover {
@@ -197,7 +211,7 @@ st.markdown("<div class='signup-shell'>", unsafe_allow_html=True)
 st.markdown("<div class='eyebrow'>Create a calm care account</div>", unsafe_allow_html=True)
 st.markdown("<div class='hero-title'>Set up Memory Lane Companion</div>", unsafe_allow_html=True)
 st.markdown(
-    "<div class='hero-copy'>Create one account for a senior or family member. After login, you can add reminders for meals, medicine, calls, and game time.</div>",
+    "<div class='hero-copy'>Create one account, then add reminders and support tools after login.</div>",
     unsafe_allow_html=True,
 )
 top_nav()

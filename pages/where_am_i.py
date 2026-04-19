@@ -28,8 +28,8 @@ def apply_styles():
         }
 
         .block-container {
-            max-width: 980px;
-            padding-top: 2rem;
+            max-width: 1040px;
+            padding-top: 1.55rem;
             padding-bottom: 3rem;
         }
 
@@ -37,8 +37,8 @@ def apply_styles():
             background: rgba(255,255,255,0.96);
             border: 1px solid #d8d5cb;
             border-radius: 30px;
-            padding: 1.4rem;
-            box-shadow: 0 18px 46px rgba(58, 74, 66, 0.08);
+            padding: 1.6rem;
+            box-shadow: 0 22px 54px rgba(58, 74, 66, 0.09);
         }
 
         .nav-card {
@@ -63,23 +63,31 @@ def apply_styles():
         .hero-title {
             font-family: 'Nunito', sans-serif;
             color: #24453b;
-            font-size: 2.45rem;
+            font-size: 2.7rem;
             font-weight: 800;
             margin-bottom: 0.2rem;
         }
 
         .hero-copy {
             color: #557067;
-            font-size: 1.05rem;
+            font-size: 1.1rem;
             margin-bottom: 1rem;
+            max-width: 40rem;
         }
 
         .section-card {
             background: rgba(255,255,255,0.97);
             border: 1px solid #e2ddd2;
-            border-radius: 24px;
-            padding: 1rem 1.1rem;
+            border-radius: 26px;
+            padding: 1.15rem 1.2rem;
             margin-bottom: 1rem;
+        }
+
+        .stButton > button, .stFormSubmitButton > button {
+            border-radius: 18px;
+            min-height: 3.35rem;
+            font-size: 1.03rem;
+            font-weight: 700;
         }
         </style>
         """,
@@ -146,14 +154,14 @@ def render_location_widget(support_name, support_phone, support_email):
             }}
             .where-title {{
               color: #204b3e;
-              font-size: 30px;
+              font-size: 34px;
               font-weight: 800;
               margin-bottom: 4px;
             }}
             .where-copy {{
               color: #557067;
-              font-size: 16px;
-              margin-bottom: 16px;
+              font-size: 18px;
+              margin-bottom: 18px;
             }}
             .where-status {{
               background: #ffffff;
@@ -164,13 +172,13 @@ def render_location_widget(support_name, support_phone, support_email):
             }}
             .status-line {{
               color: #355f51;
-              font-size: 18px;
+              font-size: 21px;
               font-weight: 700;
               margin-bottom: 8px;
             }}
             .quiet {{
               color: #5c756c;
-              font-size: 15px;
+              font-size: 17px;
             }}
             .where-actions {{
               display: grid;
@@ -181,10 +189,10 @@ def render_location_widget(support_name, support_phone, support_email):
             .where-actions button, .where-links a {{
               width: 100%;
               border: none;
-              border-radius: 18px;
-              padding: 15px 16px;
+              border-radius: 20px;
+              padding: 18px 18px;
               font-weight: 800;
-              font-size: 16px;
+              font-size: 18px;
               cursor: pointer;
               text-decoration: none;
               display: inline-flex;
@@ -230,9 +238,9 @@ def render_location_widget(support_name, support_phone, support_email):
             .note {{
               background: #f8f5ef;
               border-radius: 18px;
-              padding: 14px 16px;
+              padding: 16px 18px;
               color: #5d665e;
-              font-size: 14px;
+              font-size: 16px;
               margin-top: 12px;
             }}
           </style>
@@ -362,7 +370,7 @@ def main():
     st.markdown("<div class='eyebrow'>Location and reassurance</div>", unsafe_allow_html=True)
     st.markdown("<div class='hero-title'>Where Am I?</div>", unsafe_allow_html=True)
     st.markdown(
-        "<div class='hero-copy'>This page helps a person check where they are, stay calm, and share their location with a trusted family member or caregiver.</div>",
+        "<div class='hero-copy'>Find your location and share it with a trusted support person.</div>",
         unsafe_allow_html=True,
     )
 
@@ -380,8 +388,8 @@ def main():
     st.markdown("<div class='section-card'>", unsafe_allow_html=True)
     st.subheader("How this works")
     st.write("1. Press `Find My Location` and allow browser location access.")
-    st.write("2. The page will show coordinates and a map link with a reassurance message.")
-    st.write("3. Use the message or email buttons to send that location to family.")
+    st.write("2. The page will show your location and a map link.")
+    st.write("3. Use the message or email buttons to send it to family.")
     st.caption("Tracking only works while this page stays open in the browser.")
     st.markdown("</div>", unsafe_allow_html=True)
 
