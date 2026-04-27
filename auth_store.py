@@ -2,7 +2,7 @@ import base64
 import hashlib
 import json
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from ui_preferences import default_settings, normalize_settings
@@ -38,8 +38,19 @@ def default_profile():
 def normalize_user_record(user):
     normalized = dict(user)
     normalized.setdefault("email", "")
+    normalized.setdefault("password_reset", {})
     normalized["profile"] = {**default_profile(), **normalized.get("profile", {})}
-    normalized["profile"]["loved_ones"] = normalized["profile"].get("loved_ones", [])[:12]
+    normalized["profile"]["loved_ones"] = [
+        {
+            "name": loved_one.get("name", ""),
+            "relationship": loved_one.get("relationship", ""),
+            "image_data": loved_one.get("image_data", ""),
+            "mime_type": loved_one.get("mime_type", "image/jpeg"),
+            "audio_data": loved_one.get("audio_data", ""),
+            "audio_mime_type": loved_one.get("audio_mime_type", ""),
+        }
+        for loved_one in normalized["profile"].get("loved_ones", [])[:12]
+    ]
     normalized["profile"]["settings"] = normalize_settings(normalized["profile"].get("settings", {}))
     progress = {**default_progress(), **normalized.get("progress", {})}
     progress["history"] = progress.get("history", [])[:10]
@@ -133,6 +144,14 @@ def authenticate_user(email, password):
     }
 
 
+def _find_user_by_email(users, email):
+    normalized_email = email.strip().lower()
+    for username, stored_user in users.items():
+        if stored_user.get("email", "").lower() == normalized_email:
+            return username, stored_user
+    return None, None
+
+
 def get_user(username):
     users = _read_users()
     normalized_username = username.strip().lower()
@@ -147,6 +166,77 @@ def get_user(username):
         "profile": user.get("profile", default_profile()),
         "progress": user.get("progress", {}),
     }
+
+
+def create_password_reset(email, code, expiry_minutes=15):
+    users = _read_users()
+    username, user = _find_user_by_email(users, email)
+
+    if not user:
+        return False, "We couldn't find an account with that email."
+
+    user["password_reset"] = {
+        "code_hash": hash_password(code.strip()),
+        "expires_at": (datetime.utcnow() + timedelta(minutes=expiry_minutes)).isoformat(),
+        "requested_at": datetime.utcnow().isoformat(),
+        "attempts": 0,
+    }
+    _write_users(users)
+    return True, username
+
+
+def clear_password_reset(email):
+    users = _read_users()
+    _, user = _find_user_by_email(users, email)
+
+    if not user:
+        return False
+
+    user["password_reset"] = {}
+    _write_users(users)
+    return True
+
+
+def reset_password_with_code(email, code, new_password, max_attempts=5):
+    users = _read_users()
+    _, user = _find_user_by_email(users, email)
+
+    if not user:
+        return False, "We couldn't find an account with that email."
+
+    reset_data = user.get("password_reset", {})
+    code_hash = reset_data.get("code_hash", "")
+    expires_at = reset_data.get("expires_at", "")
+
+    if not code_hash or not expires_at:
+        return False, "Please request a new reset code first."
+
+    try:
+        expires_on = datetime.fromisoformat(expires_at)
+    except ValueError:
+        user["password_reset"] = {}
+        _write_users(users)
+        return False, "Your reset code is no longer valid. Please request a new one."
+
+    if datetime.utcnow() > expires_on:
+        user["password_reset"] = {}
+        _write_users(users)
+        return False, "Your reset code has expired. Please request a new one."
+
+    if hash_password(code.strip()) != code_hash:
+        reset_data["attempts"] = int(reset_data.get("attempts", 0)) + 1
+        if reset_data["attempts"] >= max_attempts:
+            user["password_reset"] = {}
+            _write_users(users)
+            return False, "Too many incorrect code attempts. Please request a new code."
+        user["password_reset"] = reset_data
+        _write_users(users)
+        return False, "That reset code is incorrect."
+
+    user["password_hash"] = hash_password(new_password)
+    user["password_reset"] = {}
+    _write_users(users)
+    return True, "Password updated successfully."
 
 
 def save_progress(username, mood, medicine_taken, challenge_name, challenge_response):
@@ -299,7 +389,7 @@ def save_settings(username, settings):
     return True
 
 
-def add_loved_one(username, loved_one_name, relationship, image_bytes, mime_type):
+def add_loved_one(username, loved_one_name, relationship, image_bytes, mime_type, audio_bytes=None, audio_mime_type=""):
     users = _read_users()
     normalized_username = username.strip().lower()
     user = users.get(normalized_username)
@@ -315,6 +405,8 @@ def add_loved_one(username, loved_one_name, relationship, image_bytes, mime_type
             "relationship": sanitize_text(relationship.strip()),
             "image_data": base64.b64encode(image_bytes).decode("utf-8"),
             "mime_type": mime_type.strip() or "image/jpeg",
+            "audio_data": base64.b64encode(audio_bytes).decode("utf-8") if audio_bytes else "",
+            "audio_mime_type": audio_mime_type.strip() if audio_bytes else "",
         }
     )
     profile["loved_ones"] = loved_ones[:12]

@@ -1,6 +1,7 @@
 import base64
 import os
 import random
+import sys
 import time
 from datetime import datetime
 
@@ -10,8 +11,11 @@ import streamlit.components.v1 as components
 from auth_store import (
     add_loved_one,
     authenticate_user,
+    clear_password_reset,
     clear_loved_ones,
+    create_password_reset,
     get_user,
+    reset_password_with_code,
     save_profile,
     save_progress,
     save_activity_progress,
@@ -20,8 +24,101 @@ from auth_store import (
 from ui_preferences import default_settings, get_theme, normalize_settings
 
 
+MIN_PASSWORD_LENGTH = 9
+RESET_CODE_EXPIRY_MINUTES = 15
+
+
 def _asset_path(relative_path: str) -> str:
     return os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), relative_path))
+
+
+def _secret_or_env(name: str, default: str = "") -> str:
+    try:
+        if name in st.secrets:
+            return str(st.secrets[name])
+        smtp_section = st.secrets.get("smtp", {})
+        section_key = name.lower().replace("smtp_", "")
+        if hasattr(smtp_section, "get"):
+            value = smtp_section.get(section_key)
+            if value is not None:
+                return str(value)
+    except Exception:
+        pass
+    return os.getenv(name, default)
+
+
+def _to_bool(value, default=False):
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def send_password_reset_email(recipient_email: str, reset_code: str):
+    project_root = os.path.dirname(os.path.abspath(__file__))
+    removed_paths = []
+    for candidate in ("", project_root):
+        while candidate in sys.path:
+            sys.path.remove(candidate)
+            removed_paths.append(candidate)
+
+    sys.modules.pop("calendar", None)
+    try:
+        import smtplib
+        from email.message import EmailMessage
+    finally:
+        for candidate in reversed(removed_paths):
+            sys.path.insert(0, candidate)
+
+    smtp_host = _secret_or_env("SMTP_HOST")
+    smtp_port = int(_secret_or_env("SMTP_PORT", "587"))
+    smtp_username = _secret_or_env("SMTP_USERNAME")
+    smtp_password = _secret_or_env("SMTP_PASSWORD")
+    from_email = _secret_or_env("SMTP_FROM_EMAIL", smtp_username)
+    from_name = _secret_or_env("SMTP_FROM_NAME", "Memory Lane Companion")
+    use_tls = _to_bool(_secret_or_env("SMTP_USE_TLS", "true"), default=True)
+    use_ssl = _to_bool(_secret_or_env("SMTP_USE_SSL", "false"))
+
+    if not smtp_host or not from_email:
+        return False, "Email sending is not configured yet. Add SMTP settings before using password reset."
+
+    message = EmailMessage()
+    message["Subject"] = "Your Memory Lane Companion password reset code"
+    message["From"] = f"{from_name} <{from_email}>"
+    message["To"] = recipient_email
+    message.set_content(
+        "\n".join(
+            [
+                "A password reset was requested for your Memory Lane Companion account.",
+                "",
+                f"Your reset code is: {reset_code}",
+                f"This code expires in {RESET_CODE_EXPIRY_MINUTES} minutes.",
+                "",
+                "If you did not request this change, you can ignore this email.",
+            ]
+        )
+    )
+
+    try:
+        if use_ssl:
+            with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=20) as server:
+                if smtp_username:
+                    server.login(smtp_username, smtp_password)
+                server.send_message(message)
+        else:
+            with smtplib.SMTP(smtp_host, smtp_port, timeout=20) as server:
+                server.ehlo()
+                if use_tls:
+                    server.starttls()
+                    server.ehlo()
+                if smtp_username:
+                    server.login(smtp_username, smtp_password)
+                server.send_message(message)
+    except Exception as exc:
+        return False, f"Unable to send reset email right now: {exc}"
+
+    return True, "Reset email sent."
 
 
 ACTIVITIES = {
@@ -244,6 +341,8 @@ def init_session():
     st.session_state.setdefault("familiar_greeting", default_settings()["familiar_greeting"])
     st.session_state.setdefault("show_familiar_greeting", default_settings()["show_familiar_greeting"])
     st.session_state.setdefault("text_size", default_settings()["text_size"])
+    st.session_state.setdefault("password_reset_email", "")
+    st.session_state.setdefault("password_reset_notice", "")
 
 
 def apply_styles():
@@ -632,7 +731,6 @@ def apply_button_feedback():
 
 
 def top_nav(current_page):
-    st.markdown("<div class='card'>", unsafe_allow_html=True)
     show_help = st.session_state.get("logged_in", False)
     columns = st.columns(4 if show_help else 2)
     col1, col2 = columns[0], columns[1]
@@ -663,7 +761,6 @@ def top_nav(current_page):
             type="primary" if current_page == "where" else "secondary",
         ):
             st.switch_page("pages/where_am_i.py")
-    st.markdown("</div>", unsafe_allow_html=True)
 
 
 def format_part_of_day():
@@ -723,6 +820,84 @@ def apply_user_settings(user):
     st.session_state.text_size = settings["text_size"]
 
 
+def render_password_reset():
+    reset_expanded = bool(st.session_state.password_reset_email or st.session_state.password_reset_notice)
+
+    with st.expander("Forgot your password?", expanded=reset_expanded):
+        st.caption("Request a 6-digit code by email, then enter it below to create a new password.")
+
+        if st.session_state.password_reset_notice:
+            st.info(st.session_state.password_reset_notice)
+            st.session_state.password_reset_notice = ""
+
+        with st.form("request_reset_code_form"):
+            request_email = st.text_input(
+                "Account email",
+                value=st.session_state.password_reset_email or st.session_state.pending_email,
+                key="request_reset_email",
+            )
+            requested = st.form_submit_button("Send Reset Code", use_container_width=True)
+
+        if requested:
+            if not request_email.strip():
+                st.error("Enter the email address for the account.")
+            else:
+                reset_email = request_email.strip().lower()
+                reset_code = f"{random.randint(0, 999999):06d}"
+                created, message = create_password_reset(
+                    reset_email,
+                    reset_code,
+                    expiry_minutes=RESET_CODE_EXPIRY_MINUTES,
+                )
+                if created:
+                    sent, send_message = send_password_reset_email(reset_email, reset_code)
+                    if sent:
+                        st.session_state.password_reset_email = reset_email
+                        st.session_state.pending_email = reset_email
+                        st.session_state.password_reset_notice = (
+                            f"A reset code was sent to {reset_email}. It expires in "
+                            f"{RESET_CODE_EXPIRY_MINUTES} minutes."
+                        )
+                        st.rerun()
+                    else:
+                        clear_password_reset(reset_email)
+                        st.error(send_message)
+                else:
+                    st.error(message)
+
+        with st.form("reset_password_form"):
+            reset_email = st.text_input(
+                "Email for reset",
+                value=st.session_state.password_reset_email or st.session_state.pending_email,
+                key="confirm_reset_email",
+            )
+            reset_code = st.text_input("Reset code", max_chars=6, key="confirm_reset_code")
+            new_password = st.text_input("New password", type="password")
+            confirm_password = st.text_input("Confirm new password", type="password")
+            reset_submitted = st.form_submit_button("Reset Password", use_container_width=True)
+
+        if reset_submitted:
+            if not reset_email.strip() or not reset_code.strip() or not new_password or not confirm_password:
+                st.error("Complete all password reset fields.")
+            elif len(new_password) < MIN_PASSWORD_LENGTH:
+                st.error("Your new password must be more than 8 characters.")
+            elif new_password != confirm_password:
+                st.error("New passwords do not match.")
+            else:
+                reset_done, reset_message = reset_password_with_code(
+                    reset_email.strip().lower(),
+                    reset_code.strip(),
+                    new_password,
+                )
+                if reset_done:
+                    st.session_state.password_reset_email = ""
+                    st.session_state.pending_email = reset_email.strip().lower()
+                    st.session_state.auth_notice = "Password reset complete. Please log in with your new password."
+                    st.rerun()
+                else:
+                    st.error(reset_message)
+
+
 def login_view():
     render_hero(
         "Memory Lane Companion",
@@ -754,6 +929,8 @@ def login_view():
             st.rerun()
         else:
             st.error("Incorrect email or password.")
+
+    render_password_reset()
 
 
 def render_today_snapshot(user):
@@ -814,25 +991,9 @@ def render_today_snapshot(user):
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.subheader("Family recognition")
     if loved_ones:
-        recognition_index = datetime.now().timetuple().tm_yday % len(loved_ones)
-        featured = loved_ones[recognition_index]
-        name = featured.get("name", "Someone you love")
-        relationship = featured.get("relationship", "family member")
-        image_data = featured.get("image_data", "")
-        if image_data:
-            st.image(base64.b64decode(image_data), caption=f"This is your {relationship}, {name}.", use_container_width=True)
-        st.success(f"This is your {relationship}, {name}.")
-
-        st.caption("Family gallery")
-        columns = st.columns(min(3, len(loved_ones)))
-        for index, loved_one in enumerate(loved_ones[:6]):
-            with columns[index % len(columns)]:
-                if loved_one.get("image_data"):
-                    st.image(
-                        base64.b64decode(loved_one["image_data"]),
-                        caption=f"{loved_one.get('relationship', 'Loved one')}: {loved_one.get('name', '')}",
-                        use_container_width=True,
-                    )
+        st.write("Open the Family Recognition page in the left sidebar to see loved ones' photos and play saved voice messages.")
+        if st.button("Open Family Recognition", use_container_width=True):
+            st.switch_page("pages/family_recognition.py")
     else:
         st.info("No family gallery yet. Add photos and names in Family Tools.")
     st.markdown("</div>", unsafe_allow_html=True)
@@ -1124,10 +1285,12 @@ def render_recent_history(user):
     st.markdown("</div>", unsafe_allow_html=True)
 
 
-def render_family_tools(user):
+def render_family_tools(user, show_gallery_preview=None):
     profile = user.get("profile", {})
     reminders = user.get("progress", {}).get("reminders", [])
     loved_ones = profile.get("loved_ones", [])
+    if show_gallery_preview is None:
+        show_gallery_preview = st.session_state.get("family_tools_show_gallery_preview", True)
 
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.subheader("Family and caregiver settings")
@@ -1152,12 +1315,24 @@ def render_family_tools(user):
 
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.subheader("Family gallery")
-    st.caption("Upload a loved one's photo with their name and relationship to create personalized reminders.")
-    with st.form("loved_one_form"):
-        loved_one_name = st.text_input("Loved one's name", placeholder="Sarah")
-        relationship = st.text_input("Relationship", placeholder="daughter")
-        photo = st.file_uploader("Family photo", type=["jpg", "jpeg", "png"])
-        submitted = st.form_submit_button("Add to Gallery", use_container_width=True)
+    st.caption("Add a photo and optionally record a voice message. You can listen first, then save it to the Family Recognition page.")
+    loved_one_name = st.text_input("Loved one's name", placeholder="Sarah")
+    relationship = st.text_input("Relationship", placeholder="daughter")
+    photo = st.file_uploader("Family photo", type=["jpg", "jpeg", "png"])
+    audio_recorder = getattr(st, "audio_input", None)
+    voice_note = audio_recorder("Record a short voice message (optional)") if callable(audio_recorder) else None
+    voice_upload = st.file_uploader("Or upload a voice message (optional)", type=["wav", "mp3", "m4a", "ogg"])
+    audio_source = voice_note if voice_note is not None else voice_upload
+
+    if photo is not None:
+        st.caption("Photo preview")
+        st.image(photo.getvalue(), use_container_width=True)
+
+    if audio_source is not None:
+        st.caption("Voice message preview")
+        st.audio(audio_source.getvalue(), format=audio_source.type or "audio/wav")
+
+    submitted = st.button("Save to Family Recognition", use_container_width=True)
 
     if submitted:
         if not loved_one_name.strip() or not relationship.strip() or photo is None:
@@ -1169,23 +1344,32 @@ def render_family_tools(user):
                 relationship,
                 photo.getvalue(),
                 photo.type or "image/jpeg",
+                audio_source.getvalue() if audio_source is not None else None,
+                audio_source.type if audio_source is not None else "",
             )
             if saved:
-                st.success("Family photo added.")
+                st.success("Saved to the Family Recognition page.")
                 st.rerun()
             else:
                 st.error("Unable to save this family photo.")
 
     if loved_ones:
-        gallery_columns = st.columns(min(3, len(loved_ones)))
-        for index, loved_one in enumerate(loved_ones[:9]):
-            with gallery_columns[index % len(gallery_columns)]:
-                if loved_one.get("image_data"):
-                    st.image(
-                        base64.b64decode(loved_one["image_data"]),
-                        caption=f"{loved_one.get('relationship', 'Loved one')}: {loved_one.get('name', '')}",
-                        use_container_width=True,
-                    )
+        if show_gallery_preview:
+            featured_loved_one = loved_ones[0]
+            if featured_loved_one.get("image_data"):
+                st.image(
+                    base64.b64decode(featured_loved_one["image_data"]),
+                    caption=f"{featured_loved_one.get('relationship', 'Loved one')}: {featured_loved_one.get('name', '')}",
+                    use_container_width=True,
+                )
+            if featured_loved_one.get("audio_data"):
+                st.caption(f"Voice note from {featured_loved_one.get('name', 'family')}")
+                st.audio(
+                    base64.b64decode(featured_loved_one["audio_data"]),
+                    format=featured_loved_one.get("audio_mime_type") or "audio/wav",
+                )
+            if len(loved_ones) > 1:
+                st.caption(f"{len(loved_ones)} family entries are saved.")
         if st.button("Clear Family Gallery", use_container_width=True):
             if clear_loved_ones(st.session_state.username):
                 st.success("Family gallery cleared.")
@@ -1278,7 +1462,7 @@ def dashboard_view():
     col2.metric("Activities completed", progress.get("completed_challenges", 0))
     col3.metric("Support reminders", len(progress.get("reminders", [])))
 
-    tab1, tab2, tab3 = st.tabs(["Today", "Activities", "Family Tools"])
+    tab1, tab2 = st.tabs(["Today", "Activities"])
 
     with tab1:
         render_today_snapshot(user)
@@ -1288,9 +1472,6 @@ def dashboard_view():
     with tab2:
         render_activities(user)
         render_puzzles()
-
-    with tab3:
-        render_family_tools(user)
 
     st.markdown(
         """
@@ -1305,6 +1486,8 @@ def dashboard_view():
         st.session_state.full_name = ""
         st.session_state.email = ""
         st.session_state.pending_email = ""
+        st.session_state.password_reset_email = ""
+        st.session_state.password_reset_notice = ""
         st.session_state.background_theme = default_settings()["background_theme"]
         st.session_state.familiar_greeting = default_settings()["familiar_greeting"]
         st.session_state.show_familiar_greeting = default_settings()["show_familiar_greeting"]

@@ -5,6 +5,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 from auth_store import get_user, save_calendar_events
+from ui_preferences import apply_user_settings_to_session, build_theme_css, default_settings
 
 
 COLOR_OPTIONS = {
@@ -29,17 +30,19 @@ def init_session():
     st.session_state.setdefault("auth_notice", "")
     st.session_state.setdefault("calendar_month", today.month)
     st.session_state.setdefault("calendar_year", today.year)
+    st.session_state.setdefault("background_theme", default_settings()["background_theme"])
+    st.session_state.setdefault("familiar_greeting", default_settings()["familiar_greeting"])
+    st.session_state.setdefault("show_familiar_greeting", default_settings()["show_familiar_greeting"])
+    st.session_state.setdefault("text_size", default_settings()["text_size"])
 
 
 def apply_styles():
     st.markdown(
-        """
-        <style>
-        @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&family=Nunito:wght@700;800&display=swap');
-
+        build_theme_css(
+            st.session_state.get("background_theme", default_settings()["background_theme"]),
+            max_width="1380px",
+            extra_css="""
         :root {
-            --bg-top: #f4efe2;
-            --bg-bottom: #fcfaf4;
             --panel: rgba(255, 255, 255, 0.95);
             --line: #d8cfbf;
             --ink: #23414b;
@@ -50,16 +53,10 @@ def apply_styles():
         }
 
         .stApp {
-            background:
-                radial-gradient(circle at top left, rgba(244, 215, 191, 0.85), transparent 30%),
-                radial-gradient(circle at top right, rgba(126, 163, 127, 0.18), transparent 24%),
-                linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
             color: var(--ink);
-            font-family: 'Lexend', sans-serif;
         }
 
         .block-container {
-            max-width: 1380px;
             padding-top: 1.35rem;
             padding-bottom: 2.5rem;
         }
@@ -225,15 +222,20 @@ def apply_styles():
 
         .legend-row {
             display: flex;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
             gap: 0.6rem;
             margin-top: 0.2rem;
+            width: 100%;
+            overflow-x: auto;
+            padding-bottom: 0.35rem;
+            scrollbar-width: thin;
         }
 
         .legend-chip {
             display: inline-flex;
             align-items: center;
             gap: 0.45rem;
+            flex: 0 0 auto;
             background: rgba(255,255,255,0.82);
             border: 1px solid var(--line);
             border-radius: 999px;
@@ -241,6 +243,7 @@ def apply_styles():
             font-size: 1rem;
             color: var(--ink);
             font-weight: 600;
+            white-space: nowrap;
         }
 
         .legend-dot {
@@ -311,8 +314,8 @@ def apply_styles():
                 min-height: 170px;
             }
         }
-        </style>
         """,
+        ),
         unsafe_allow_html=True,
     )
 
@@ -614,17 +617,23 @@ def render_month_grid(events: list):
 def main():
     st.set_page_config(page_title="Care Calendar", page_icon=":calendar:", layout="wide")
     init_session()
-    apply_styles()
-    apply_button_feedback()
 
     if not st.session_state.logged_in or not st.session_state.username:
+        apply_styles()
+        apply_button_feedback()
         render_login_prompt()
         return
 
     user = get_user(st.session_state.username)
     if not user:
+        apply_styles()
+        apply_button_feedback()
         render_login_prompt()
         return
+
+    apply_user_settings_to_session(st.session_state, user)
+    apply_styles()
+    apply_button_feedback()
 
     events = user.get("progress", {}).get("calendar_events", [])
 

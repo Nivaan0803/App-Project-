@@ -92,6 +92,8 @@ def main():
     support_pages = []
     if st.session_state.logged_in:
         account_pages.append(st.Page("login.py", title="DASHBOARD", icon=":material/dashboard:"))
+        account_pages.append(st.Page("pages/ben.py", title="BEN", icon=":material/voice_chat:"))
+        account_pages.append(st.Page("pages/family_recognition.py", title="FAMILY", icon=":material/favorite:"))
         account_pages.append(st.Page("pages/calendar.py", title="CALENDAR", icon=":material/calendar_month:"))
         account_pages.append(st.Page("pages/settings.py", title="SETTINGS", icon=":material/settings:"))
         support_pages.append(st.Page("pages/help.py", title="HELP", icon=":material/emergency_home:"))

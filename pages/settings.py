@@ -1,7 +1,13 @@
 import streamlit as st
 
 from auth_store import get_user, save_settings
-from ui_preferences import THEME_OPTIONS, default_settings, get_theme, normalize_settings
+from ui_preferences import (
+    THEME_OPTIONS,
+    apply_user_settings_to_session,
+    build_theme_css,
+    default_settings,
+    normalize_settings,
+)
 
 
 def init_session():
@@ -16,44 +22,29 @@ def init_session():
 
 
 def apply_styles():
-    theme = get_theme(st.session_state.get("background_theme", default_settings()["background_theme"]))
     st.markdown(
-        f"""
-        <style>
-        @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&family=Nunito:wght@700;800&display=swap');
-
-        .stApp {{
-            background:
-                radial-gradient(circle at top left, {theme['glow_left']}, transparent 28%),
-                radial-gradient(circle at top right, {theme['glow_right']}, transparent 22%),
-                linear-gradient(180deg, {theme['bg_top']} 0%, {theme['bg_bottom']} 100%);
-            font-family: 'Lexend', sans-serif;
-        }}
-
-        .block-container {{
-            max-width: 1040px;
-            padding-top: 1.5rem;
-            padding-bottom: 3rem;
-        }}
-
-        .hero, .panel {{
+        build_theme_css(
+            st.session_state.get("background_theme", default_settings()["background_theme"]),
+            max_width="1040px",
+            extra_css="""
+        .hero, .panel {
             background: rgba(255,255,255,0.95);
             border: 1px solid #d8cfbf;
             border-radius: 28px;
             box-shadow: 0 18px 46px rgba(63, 74, 62, 0.08);
-        }}
+        }
 
-        .hero {{
+        .hero {
             padding: 1.5rem 1.6rem;
             margin-bottom: 1rem;
-        }}
+        }
 
-        .panel {{
+        .panel {
             padding: 1.2rem 1.25rem;
             margin-bottom: 1rem;
-        }}
+        }
 
-        .eyebrow {{
+        .eyebrow {
             display: inline-block;
             padding: 0.36rem 0.76rem;
             border-radius: 999px;
@@ -62,89 +53,84 @@ def apply_styles():
             font-size: 0.92rem;
             font-weight: 700;
             margin-bottom: 0.8rem;
-        }}
+        }
 
-        .hero-title {{
+        .hero-title {
             font-family: 'Nunito', sans-serif;
             font-size: 2.75rem;
             font-weight: 800;
             color: #25424d;
             margin-bottom: 0.25rem;
-        }}
+        }
 
-        .hero-copy {{
+        .hero-copy {
             color: #55707b;
             font-size: 1.08rem;
             max-width: 42rem;
-        }}
+        }
 
-        .theme-preview-grid {{
+        .theme-preview-grid {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 0.9rem;
             margin-top: 0.7rem;
-        }}
+        }
 
-        .theme-preview {{
+        .theme-preview {
             border-radius: 22px;
             border: 1px solid #ded3c2;
             min-height: 110px;
             padding: 0.95rem;
             box-shadow: 0 10px 24px rgba(63, 74, 62, 0.06);
-        }}
+        }
 
-        .theme-name {{
+        .theme-name {
             font-family: 'Nunito', sans-serif;
             font-size: 1.25rem;
             font-weight: 800;
             color: #25424d;
-        }}
+        }
 
-        .theme-copy {{
+        .theme-copy {
             color: #55707b;
             margin-top: 0.3rem;
-        }}
+        }
 
-        .stButton > button, .stFormSubmitButton > button {{
+        .stButton > button, .stFormSubmitButton > button {
             border-radius: 18px;
             min-height: 3.35rem;
             font-size: 1.03rem;
             font-weight: 700;
             border: none;
-        }}
+        }
 
         div[data-baseweb="input"] > div,
         div[data-baseweb="select"] > div,
-        .stTextArea textarea {{
+        .stTextArea textarea {
             min-height: 3.25rem !important;
             border-radius: 18px !important;
             font-size: 1.02rem !important;
             background: #fffdf9 !important;
-        }}
+        }
 
-        .stTextArea textarea {{
+        .stTextArea textarea {
             min-height: 120px !important;
             padding-top: 0.95rem !important;
-        }}
+        }
 
-        @media (max-width: 900px) {{
-            .theme-preview-grid {{
+        @media (max-width: 900px) {
+            .theme-preview-grid {
                 grid-template-columns: 1fr;
-            }}
-        }}
-        </style>
+            }
+        }
         """,
+        ),
         unsafe_allow_html=True,
     )
 
 
 def apply_user_settings(user):
-    settings = normalize_settings(user.get("profile", {}).get("settings", {}))
-    st.session_state.background_theme = settings["background_theme"]
-    st.session_state.familiar_greeting = settings["familiar_greeting"]
-    st.session_state.show_familiar_greeting = settings["show_familiar_greeting"]
-    st.session_state.text_size = settings["text_size"]
-    return settings
+    return apply_user_settings_to_session(st.session_state, user)
 
 
 def render_theme_previews():

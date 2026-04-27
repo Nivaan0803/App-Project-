@@ -4,6 +4,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 from auth_store import get_user
+from ui_preferences import apply_user_settings_to_session, build_theme_css, default_settings
 
 
 def init_session():
@@ -11,27 +12,18 @@ def init_session():
     st.session_state.setdefault("username", "")
     st.session_state.setdefault("full_name", "")
     st.session_state.setdefault("email", "")
+    st.session_state.setdefault("background_theme", default_settings()["background_theme"])
+    st.session_state.setdefault("familiar_greeting", default_settings()["familiar_greeting"])
+    st.session_state.setdefault("show_familiar_greeting", default_settings()["show_familiar_greeting"])
+    st.session_state.setdefault("text_size", default_settings()["text_size"])
 
 
 def apply_styles():
     st.markdown(
-        """
-        <style>
-        @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&family=Nunito:wght@700;800&display=swap');
-
-        .stApp {
-            background:
-                radial-gradient(circle at top right, rgba(193, 227, 214, 0.68), transparent 22%),
-                radial-gradient(circle at top left, rgba(247, 221, 190, 0.75), transparent 26%),
-                linear-gradient(180deg, #f4efe6 0%, #fbfaf6 100%);
-            font-family: 'Lexend', sans-serif;
-        }
-
-        .block-container {
-            max-width: 1040px;
-            padding-top: 1.55rem;
-            padding-bottom: 3rem;
-        }
+        build_theme_css(
+            st.session_state.get("background_theme", default_settings()["background_theme"]),
+            max_width="1040px",
+            extra_css="""
 
         .shell {
             background: rgba(255,255,255,0.96);
@@ -89,28 +81,29 @@ def apply_styles():
             font-size: 1.03rem;
             font-weight: 700;
         }
-        </style>
         """,
+        ),
         unsafe_allow_html=True,
     )
 
 
 def top_nav():
-    st.markdown("<div class='nav-card'>", unsafe_allow_html=True)
     show_help = st.session_state.get("logged_in", False)
-    columns = st.columns(4 if show_help else 2)
+    st.markdown("<div style='height: 0.55rem;'></div>", unsafe_allow_html=True)
+    columns = st.columns(3 if show_help else 2)
     col1, col2 = columns[0], columns[1]
-    if col1.button("Login", use_container_width=True):
+    if col1.button("Login", use_container_width=True, type="secondary" if show_help else "primary"):
         st.switch_page("login.py")
-    if col2.button("Sign Up", use_container_width=True):
-        st.switch_page("pages/sign_up.py")
+    if show_help:
+        if col2.button("Help", use_container_width=True):
+            st.switch_page("pages/help.py")
+    else:
+        if col2.button("Sign Up", use_container_width=True):
+            st.switch_page("pages/sign_up.py")
     if show_help:
         col3 = columns[2]
-        col4 = columns[3]
-        if col3.button("Help", use_container_width=True):
-            st.switch_page("pages/help.py")
-        col4.button("Where Am I?", use_container_width=True, type="primary")
-    st.markdown("</div>", unsafe_allow_html=True)
+        col3.button("Where Am I?", use_container_width=True, type="primary")
+    st.markdown("<div style='height: 0.8rem;'></div>", unsafe_allow_html=True)
 
 
 def clean_phone(phone):
@@ -249,7 +242,7 @@ def render_location_widget(support_name, support_phone, support_email):
             <div class="where-copy">Press the green button to find your location. You are safe. This page can help you contact family with your current location.</div>
             <div class="where-status">
               <div id="statusLine" class="status-line">Location not requested yet.</div>
-              <div id="statusDetail" class="quiet">When you allow location access, this page will show your coordinates and a map link.</div>
+              <div id="statusDetail" class="quiet">When you allow location access, this page will show your address and a map link.</div>
             </div>
             <div class="where-actions">
               <button class="locate" id="locateButton" type="button">Find My Location</button>
@@ -282,11 +275,30 @@ def render_location_widget(support_name, support_phone, support_email):
             callLink.classList.remove("hidden");
           }}
 
-          function updateLinks(latitude, longitude) {{
+          async function lookupAddress(latitude, longitude) {{
+            const reverseUrl = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${{latitude}}&lon=${{longitude}}`;
+            try {{
+              const response = await fetch(reverseUrl, {{
+                headers: {{
+                  "Accept-Language": "en"
+                }}
+              }});
+              if (!response.ok) {{
+                throw new Error("Reverse geocoding failed");
+              }}
+              const data = await response.json();
+              return data.display_name || "";
+            }} catch (error) {{
+              return "";
+            }}
+          }}
+
+          function updateLinks(latitude, longitude, address) {{
             const coords = `${{latitude.toFixed(5)}}, ${{longitude.toFixed(5)}}`;
             const mapsUrl = `https://www.google.com/maps?q=${{latitude}},${{longitude}}`;
-            const message = encodeURIComponent(`I may need help. My location is ${{coords}}. Map: ${{mapsUrl}}`);
-            const emailBody = encodeURIComponent(`I may need help. My current location is ${{coords}}.\\n\\nMap: ${{mapsUrl}}`);
+            const locationLabel = address || coords;
+            const message = encodeURIComponent(`I may need help. My location is ${{locationLabel}}. Map: ${{mapsUrl}}`);
+            const emailBody = encodeURIComponent(`I may need help. My current location is ${{locationLabel}}.\\n\\nMap: ${{mapsUrl}}`);
 
             mapLink.href = mapsUrl;
             mapLink.classList.remove("hidden");
@@ -304,13 +316,21 @@ def render_location_widget(support_name, support_phone, support_email):
             }}
           }}
 
-          function showLocation(position) {{
+          async function showLocation(position) {{
             const latitude = position.coords.latitude;
             const longitude = position.coords.longitude;
             const accuracy = Math.round(position.coords.accuracy);
-            statusLine.textContent = `You are here: ${{latitude.toFixed(5)}}, ${{longitude.toFixed(5)}}`;
-            statusDetail.textContent = `You are safe. Location accuracy is about ${{accuracy}} meters. Stay where you are and contact family if needed.`;
-            updateLinks(latitude, longitude);
+            statusLine.textContent = "Finding your address...";
+            statusDetail.textContent = `Your location was found. Accuracy is about ${{accuracy}} meters.`;
+            const address = await lookupAddress(latitude, longitude);
+            if (address) {{
+              statusLine.textContent = `You are here: ${{address}}`;
+              statusDetail.textContent = `You are safe. Location accuracy is about ${{accuracy}} meters. Stay where you are and contact family if needed.`;
+            }} else {{
+              statusLine.textContent = `Nearby location: ${{latitude.toFixed(5)}}, ${{longitude.toFixed(5)}}`;
+              statusDetail.textContent = `We found your location, but could not turn it into a street address. Accuracy is about ${{accuracy}} meters.`;
+            }}
+            updateLinks(latitude, longitude, address);
           }}
 
           function showError(error) {{
@@ -361,6 +381,9 @@ def main():
     init_session()
     if not st.session_state.logged_in:
         st.switch_page("login.py")
+    user = get_user(st.session_state.username) if st.session_state.username else None
+    if user:
+        apply_user_settings_to_session(st.session_state, user)
     apply_styles()
     top_nav()
 

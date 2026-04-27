@@ -49,3 +49,44 @@ def normalize_settings(settings):
 def get_theme(theme_name):
     normalized = normalize_settings({"background_theme": theme_name})
     return THEME_OPTIONS[normalized["background_theme"]]
+
+
+def apply_user_settings_to_session(session_state, user):
+    settings = normalize_settings(user.get("profile", {}).get("settings", {}))
+    session_state.background_theme = settings["background_theme"]
+    session_state.familiar_greeting = settings["familiar_greeting"]
+    session_state.show_familiar_greeting = settings["show_familiar_greeting"]
+    session_state.text_size = settings["text_size"]
+    return settings
+
+
+def build_theme_css(theme_name, max_width="1040px", extra_css=""):
+    theme = get_theme(theme_name)
+    return f"""
+        <style>
+        @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&family=Nunito:wght@700;800&display=swap');
+
+        :root {{
+            --bg-top: {theme['bg_top']};
+            --bg-bottom: {theme['bg_bottom']};
+            --glow-left: {theme['glow_left']};
+            --glow-right: {theme['glow_right']};
+        }}
+
+        .stApp {{
+            background:
+                radial-gradient(circle at top left, var(--glow-left), transparent 28%),
+                radial-gradient(circle at top right, var(--glow-right), transparent 22%),
+                linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+            font-family: 'Lexend', sans-serif;
+        }}
+
+        .block-container {{
+            max-width: {max_width};
+            padding-top: 1.55rem;
+            padding-bottom: 3rem;
+        }}
+
+        {extra_css}
+        </style>
+    """

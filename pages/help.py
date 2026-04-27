@@ -3,6 +3,7 @@ from urllib.parse import quote
 import streamlit as st
 
 from auth_store import get_user
+from ui_preferences import apply_user_settings_to_session, build_theme_css, default_settings
 
 
 def init_session():
@@ -10,26 +11,18 @@ def init_session():
     st.session_state.setdefault("username", "")
     st.session_state.setdefault("full_name", "")
     st.session_state.setdefault("email", "")
+    st.session_state.setdefault("background_theme", default_settings()["background_theme"])
+    st.session_state.setdefault("familiar_greeting", default_settings()["familiar_greeting"])
+    st.session_state.setdefault("show_familiar_greeting", default_settings()["show_familiar_greeting"])
+    st.session_state.setdefault("text_size", default_settings()["text_size"])
 
 
 def apply_styles():
     st.markdown(
-        """
-        <style>
-        @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&family=Nunito:wght@700;800&display=swap');
-
-        .stApp {
-            background:
-                radial-gradient(circle at top left, rgba(255, 211, 202, 0.88), transparent 24%),
-                linear-gradient(180deg, #f7e9e5 0%, #fffaf8 100%);
-            font-family: 'Lexend', sans-serif;
-        }
-
-        .block-container {
-            max-width: 980px;
-            padding-top: 1.55rem;
-            padding-bottom: 3rem;
-        }
+        build_theme_css(
+            st.session_state.get("background_theme", default_settings()["background_theme"]),
+            max_width="980px",
+            extra_css="""
 
         .shell {
             background: rgba(255,255,255,0.96);
@@ -155,28 +148,30 @@ def apply_styles():
             min-height: 130px !important;
             padding-top: 0.95rem !important;
         }
-        </style>
         """,
+        ),
         unsafe_allow_html=True,
     )
 
 
 def top_nav():
-    st.markdown("<div class='nav-card'>", unsafe_allow_html=True)
     show_help = st.session_state.get("logged_in", False)
-    columns = st.columns(4 if show_help else 2)
+    st.markdown("<div style='height: 0.55rem;'></div>", unsafe_allow_html=True)
+    columns = st.columns(3 if show_help else 2)
     col1, col2 = columns[0], columns[1]
-    if col1.button("Login", use_container_width=True):
+    if col1.button("Login", use_container_width=True, type="secondary" if show_help else "primary"):
         st.switch_page("login.py")
-    if col2.button("Sign Up", use_container_width=True):
-        st.switch_page("pages/sign_up.py")
+    if show_help:
+        if col2.button("Help", use_container_width=True, type="primary"):
+            st.switch_page("pages/help.py")
+    else:
+        if col2.button("Sign Up", use_container_width=True):
+            st.switch_page("pages/sign_up.py")
     if show_help:
         col3 = columns[2]
-        col4 = columns[3]
-        col3.button("Help", use_container_width=True, type="primary")
-        if col4.button("Where Am I?", use_container_width=True):
+        if col3.button("Where Am I?", use_container_width=True):
             st.switch_page("pages/where_am_i.py")
-    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("<div style='height: 0.8rem;'></div>", unsafe_allow_html=True)
 
 
 def clean_phone(phone):
@@ -238,6 +233,9 @@ def main():
     init_session()
     if not st.session_state.logged_in:
         st.switch_page("login.py")
+    user = get_user(st.session_state.username) if st.session_state.username else None
+    if user:
+        apply_user_settings_to_session(st.session_state, user)
     apply_styles()
     top_nav()
 
