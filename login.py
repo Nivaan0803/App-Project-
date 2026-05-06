@@ -32,6 +32,41 @@ def _asset_path(relative_path: str) -> str:
     return os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), relative_path))
 
 
+VISUAL_ASSET_FILES = {
+    "Apple": "assets/visuals/apple.png",
+    "Banana": "assets/visuals/banana.png",
+    "Bathroom": "assets/visuals/bathroom.png",
+    "Bed": "assets/visuals/bed.png",
+    "Blanket": "assets/visuals/blanket.png",
+    "Book": "assets/visuals/book.png",
+    "Chocolate": "assets/visuals/chocolate.png",
+    "Clock": "assets/visuals/clock.png",
+    "Closet": "assets/visuals/closet.png",
+    "Coat": "assets/visuals/coat.png",
+    "Dog": "assets/visuals/dog.png",
+    "Kitchen": "assets/visuals/kitchen.png",
+    "Lamp": "assets/visuals/lamp.png",
+    "Milk": "assets/visuals/milk.png",
+    "Pillow": "assets/visuals/pillow.png",
+    "Plate": "assets/visuals/plate.png",
+    "Refrigerator": "assets/visuals/refrigerator.png",
+    "Rose": "assets/visuals/rose.png",
+    "Shelf": "assets/visuals/shelf.png",
+    "Soap": "assets/visuals/soap.png",
+    "Socks": "assets/visuals/socks.png",
+    "Spoon": "assets/visuals/spoon.png",
+    "Table": "assets/visuals/table.png",
+    "Toothbrush": "assets/visuals/toothbrush.png",
+}
+
+
+def _visual_asset(name: str) -> str:
+    relative_path = VISUAL_ASSET_FILES.get(name)
+    if not relative_path:
+        return ""
+    return _asset_path(relative_path)
+
+
 def _secret_or_env(name: str, default: str = "") -> str:
     try:
         if name in st.secrets:
@@ -153,10 +188,10 @@ ACTIVITIES = {
                 "answer": "Apple",
             },
             {
-                "study": ["Rose", "Cup", "Socks"],
+                "study": ["Rose", "Chocolate", "Socks"],
                 "question": "Which item was in the list?",
-                "options": ["Rose", "Plate", "Window"],
-                "answer": "Rose",
+                "options": ["Chocolate", "Plate", "Window"],
+                "answer": "Chocolate",
             },
             {
                 "study": ["Book", "Banana", "Clock"],
@@ -173,17 +208,7 @@ ACTIVITIES = {
         "sets": [
             {
                 "left": ["Toothbrush", "Pillow", "Spoon"],
-                "left_images": [
-                    "assets/matching/r1_toothbrush.svg",
-                    "assets/matching/r1_pillow.svg",
-                    "assets/matching/r1_spoon.svg",
-                ],
                 "right": ["Bed", "Kitchen", "Bathroom"],
-                "right_images": [
-                    "assets/matching/place_bed.svg",
-                    "assets/matching/place_kitchen.svg",
-                    "assets/matching/place_bathroom.svg",
-                ],
                 "answers": {
                     "Toothbrush": "Bathroom",
                     "Pillow": "Bed",
@@ -192,17 +217,7 @@ ACTIVITIES = {
             },
             {
                 "left": ["Coat", "Milk", "Book"],
-                "left_images": [
-                    "assets/matching/r2_coat.svg",
-                    "assets/matching/r2_milk.svg",
-                    "assets/matching/r2_book.svg",
-                ],
                 "right": ["Refrigerator", "Shelf", "Closet"],
-                "right_images": [
-                    "assets/matching/place_fridge.svg",
-                    "assets/matching/place_shelf.svg",
-                    "assets/matching/place_closet.svg",
-                ],
                 "answers": {
                     "Coat": "Closet",
                     "Milk": "Refrigerator",
@@ -211,17 +226,7 @@ ACTIVITIES = {
             },
             {
                 "left": ["Soap", "Plate", "Blanket"],
-                "left_images": [
-                    "assets/matching/r3_soap.svg",
-                    "assets/matching/r3_plate.svg",
-                    "assets/matching/r3_blanket.svg",
-                ],
                 "right": ["Bathroom", "Bed", "Table"],
-                "right_images": [
-                    "assets/matching/place_bathroom.svg",
-                    "assets/matching/place_bed.svg",
-                    "assets/matching/place_table.svg",
-                ],
                 "answers": {
                     "Soap": "Bathroom",
                     "Plate": "Table",
@@ -799,6 +804,18 @@ def render_time_picker(prefix, label, default_value):
     return st.selectbox(label, time_options, index=default_index, key=f"{prefix}_time")
 
 
+def render_visual_card_grid(names, caption=None):
+    if caption:
+        st.caption(caption)
+    columns = st.columns(len(names))
+    for index, name in enumerate(names):
+        with columns[index]:
+            asset_path = _visual_asset(name)
+            if asset_path:
+                st.image(asset_path, use_container_width=True)
+            st.caption(name)
+
+
 def render_hero(title, copy):
     st.markdown(
         f"""
@@ -1114,7 +1131,7 @@ def render_activities(user):
         round_index = st.session_state.get("memory_game_round", 0) % len(activity["sets"])
         game = activity["sets"][round_index]
         if not st.session_state.memory_game_started and not st.session_state.memory_game_ready:
-            st.write("Press start to study the items for a few seconds.")
+            render_visual_card_grid(game["study"], "Look at each item before starting the round.")
             if st.button("Start Memory Round", use_container_width=True):
                 st.session_state.memory_game_started = True
                 st.rerun()
@@ -1122,7 +1139,8 @@ def render_activities(user):
         elif st.session_state.memory_game_started and not st.session_state.memory_game_ready:
             list_placeholder = st.empty()
             countdown_placeholder = st.empty()
-            list_placeholder.markdown(f"**{' | '.join(game['study'])}**")
+            with list_placeholder.container():
+                render_visual_card_grid(game["study"], "Study these items. The pictures will disappear soon.")
             for seconds_left in range(5, 0, -1):
                 countdown_placeholder.info(f"Study these items. The list will disappear in {seconds_left} seconds.")
                 time.sleep(1)
@@ -1158,23 +1176,16 @@ def render_activities(user):
     elif activity["type"] == "matching":
         round_index = st.session_state.get("matching_game_round", 0) % len(activity["sets"])
         game = activity["sets"][round_index]
-        left_images = game.get("left_images") or []
-        right_images = game.get("right_images") or []
         with st.form("activity_matching_form"):
             st.caption("Choose the best place for each picture.")
-            if right_images and len(right_images) == len(game["right"]):
-                st.markdown("**Places to choose from**")
-                legend_cols = st.columns(len(game["right"]))
-                for i, place in enumerate(game["right"]):
-                    with legend_cols[i]:
-                        st.image(_asset_path(right_images[i]), use_container_width=True)
-                        st.caption(place)
+            render_visual_card_grid(game["right"], "Places to choose from")
             selections = {}
-            for j, item in enumerate(game["left"]):
+            for item in game["left"]:
                 row = st.columns([1, 1.15])
                 with row[0]:
-                    if j < len(left_images):
-                        st.image(_asset_path(left_images[j]), use_container_width=True)
+                    asset_path = _visual_asset(item)
+                    if asset_path:
+                        st.image(asset_path, use_container_width=True)
                     st.caption(item)
                 with row[1]:
                     selections[item] = st.selectbox(

@@ -71,6 +71,15 @@ def build_theme_css(theme_name, max_width="1040px", extra_css=""):
             --bg-bottom: {theme['bg_bottom']};
             --glow-left: {theme['glow_left']};
             --glow-right: {theme['glow_right']};
+            --panel-bg: rgba(255, 255, 255, 0.95);
+            --panel-soft: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247, 241, 227, 0.92));
+            --line-color: #d8cfbf;
+            --line-soft: #e4d9ca;
+            --ink-color: #25424d;
+            --muted-color: #55707b;
+            --accent-color: #cf7c4d;
+            --accent-soft: #f4d7bf;
+            --success-color: #7ea37f;
         }}
 
         .stApp {{
@@ -79,6 +88,7 @@ def build_theme_css(theme_name, max_width="1040px", extra_css=""):
                 radial-gradient(circle at top right, var(--glow-right), transparent 22%),
                 linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
             font-family: 'Lexend', sans-serif;
+            color: var(--ink-color);
         }}
 
         .block-container {{

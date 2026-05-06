@@ -43,12 +43,12 @@ def apply_styles():
             max_width="1380px",
             extra_css="""
         :root {
-            --panel: rgba(255, 255, 255, 0.95);
-            --line: #d8cfbf;
-            --ink: #23414b;
-            --muted: #5d737b;
-            --warm: #cf7c4d;
-            --soft: #f4d7bf;
+            --panel: var(--panel-bg);
+            --line: var(--line-color);
+            --ink: var(--ink-color);
+            --muted: var(--muted-color);
+            --warm: var(--accent-color);
+            --soft: var(--accent-soft);
             --today: #fff3cf;
         }
 
@@ -112,7 +112,7 @@ def apply_styles():
         }
 
         .summary-card {
-            background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(247, 241, 227, 0.92));
+            background: var(--panel-soft);
             border: 1px solid var(--line);
             border-radius: 22px;
             padding: 1rem 1.1rem;

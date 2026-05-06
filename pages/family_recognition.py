@@ -27,8 +27,8 @@ def apply_styles():
             max_width="1120px",
             extra_css="""
         .hero, .panel {
-            background: rgba(255,255,255,0.95);
-            border: 1px solid #d8cfbf;
+            background: var(--panel-bg);
+            border: 1px solid var(--line-color);
             border-radius: 28px;
             box-shadow: 0 18px 46px rgba(63, 74, 62, 0.08);
         }
@@ -47,7 +47,7 @@ def apply_styles():
             display: inline-block;
             padding: 0.36rem 0.76rem;
             border-radius: 999px;
-            background: #f4d7bf;
+            background: var(--accent-soft);
             color: #8c4d25;
             font-size: 0.92rem;
             font-weight: 700;
@@ -58,12 +58,12 @@ def apply_styles():
             font-family: 'Nunito', sans-serif;
             font-size: 2.75rem;
             font-weight: 800;
-            color: #25424d;
+            color: var(--ink-color);
             margin-bottom: 0.25rem;
         }
 
         .hero-copy, .memory-copy {
-            color: #55707b;
+            color: var(--muted-color);
             font-size: 1.08rem;
         }
 

@@ -5,7 +5,11 @@ from datetime import datetime
 import streamlit as st
 import streamlit.components.v1 as components_v1
 import streamlit.components.v2 as components
-from openai import OpenAI
+
+try:
+    from openai import OpenAI
+except ModuleNotFoundError:
+    OpenAI = None
 
 from auth_store import get_user
 from ui_preferences import apply_user_settings_to_session, build_theme_css, default_settings
@@ -354,16 +358,13 @@ def apply_styles():
             max_width="1180px",
             extra_css="""
         .stApp {
-            background:
-                radial-gradient(circle at 14% 32%, color-mix(in srgb, var(--glow-left) 58%, transparent), transparent 20%),
-                radial-gradient(circle at 78% 22%, color-mix(in srgb, var(--glow-right) 62%, transparent), transparent 18%),
-                radial-gradient(circle at 55% 78%, rgba(8, 166, 183, 0.10), transparent 20%),
-                linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
-            color: #123848;
+            color: var(--ink-color);
         }
 
         [data-testid="stAppViewContainer"] {
             background-image:
+                radial-gradient(circle at 14% 32%, rgba(8, 166, 183, 0.08), transparent 18%),
+                radial-gradient(circle at 78% 22%, rgba(10, 185, 201, 0.08), transparent 16%),
                 linear-gradient(rgba(18, 159, 179, 0.06) 1px, transparent 1px),
                 linear-gradient(90deg, rgba(18, 159, 179, 0.06) 1px, transparent 1px);
             background-size: 56px 56px;
@@ -383,8 +384,8 @@ def apply_styles():
             overflow: hidden;
             padding: 2rem;
             border-radius: 36px;
-            background: linear-gradient(180deg, rgba(255,255,255,0.78), rgba(228,251,255,0.72));
-            border: 1px solid rgba(89, 193, 208, 0.28);
+            background: linear-gradient(180deg, rgba(255,255,255,0.86), rgba(239,249,250,0.82));
+            border: 1px solid color-mix(in srgb, var(--line-color) 68%, #59c1d0);
             box-shadow: 0 22px 60px rgba(11, 85, 98, 0.12);
             backdrop-filter: blur(14px);
         }
@@ -486,7 +487,7 @@ def apply_styles():
             font-size: clamp(3rem, 5vw, 4.65rem);
             line-height: 0.98;
             font-weight: 900;
-            color: #10213d;
+            color: var(--ink-color);
         }
 
         .hero-title-accent {
@@ -499,7 +500,7 @@ def apply_styles():
             max-width: 760px;
             font-size: 1.34rem;
             line-height: 1.6;
-            color: #4c6270;
+            color: var(--muted-color);
         }
 
         .hero-subcopy {
@@ -507,7 +508,7 @@ def apply_styles():
             max-width: 700px;
             font-size: 1.05rem;
             line-height: 1.65;
-            color: #607781;
+            color: var(--muted-color);
         }
 
         .feature-row {
@@ -1096,6 +1097,8 @@ def _secret_or_env(name: str, default: str = "") -> str:
 
 
 def get_openai_client():
+    if OpenAI is None:
+        return None
     api_key = _secret_or_env("OPENAI_API_KEY")
     if not api_key:
         return None
@@ -1203,6 +1206,12 @@ def clear_bob_chat():
 def process_bob_turn(user, user_text: str) -> bool:
     client = get_openai_client()
     if client is None:
+        if OpenAI is None:
+            st.error(
+                "Ben cannot start because the `openai` package is not installed in the Python interpreter running Streamlit. "
+                "Install it there with `python -m pip install openai`, or start Streamlit from this project's `.venv`."
+            )
+            return False
         st.error("Ben needs an OpenAI API key before chat can work. Add `OPENAI_API_KEY` to `.streamlit/secrets.toml` or your environment.")
         return False
 
@@ -1493,4 +1502,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

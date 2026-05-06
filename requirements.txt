@@ -1,2 +1,3 @@
+# Third-party packages imported by the project source files
 openai
 streamlit

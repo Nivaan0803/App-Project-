@@ -26,16 +26,16 @@ def apply_styles():
             extra_css="""
 
         .shell {
-            background: rgba(255,255,255,0.96);
-            border: 1px solid #d8d5cb;
+            background: var(--panel-bg);
+            border: 1px solid var(--line-color);
             border-radius: 30px;
             padding: 1.6rem;
             box-shadow: 0 22px 54px rgba(58, 74, 66, 0.09);
         }
 
         .nav-card {
-            background: rgba(255,255,255,0.95);
-            border: 1px solid #d8d5cb;
+            background: var(--panel-bg);
+            border: 1px solid var(--line-color);
             border-radius: 22px;
             padding: 0.7rem;
             margin-bottom: 1rem;
