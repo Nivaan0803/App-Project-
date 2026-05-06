@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Plate">
+  <rect width="200" height="200" fill="#f7f1e3" rx="12"/>
+  <ellipse cx="100" cy="105" rx="65" ry="38" fill="#fafafa" stroke="#d8cfbf" stroke-width="3"/>
+  <ellipse cx="100" cy="105" rx="48" ry="26" fill="#fffdf8" stroke="#cf7c4d" stroke-width="1" opacity="0.5"/>
+</svg>

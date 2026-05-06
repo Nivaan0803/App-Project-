@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Soap">
+  <rect width="200" height="200" fill="#f7f1e3" rx="12"/>
+  <rect x="60" y="70" width="80" height="55" fill="#f0f8ff" stroke="#7eb8d4" stroke-width="2" rx="8"/>
+  <ellipse cx="100" cy="98" rx="28" ry="18" fill="#e8f4fc"/>
+  <text x="100" y="105" text-anchor="middle" font-family="Lexend,sans-serif" font-size="12" fill="#55707b">soap</text>
+</svg>

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Blanket">
+  <rect width="200" height="200" fill="#f7f1e3" rx="12"/>
+  <path d="M40 130 Q100 90 160 130 L160 155 Q100 125 40 155 Z" fill="#7ea37f" opacity="0.55" stroke="#5c7d5d" stroke-width="2"/>
+  <path d="M45 135 Q100 100 155 135" fill="none" stroke="#5c7d5d" stroke-width="2" stroke-dasharray="6 4"/>
+  <circle cx="75" cy="118" r="6" fill="#cf7c4d" opacity="0.7"/>
+  <circle cx="125" cy="118" r="6" fill="#cf7c4d" opacity="0.7"/>
+</svg>

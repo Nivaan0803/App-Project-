@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Bathroom">
+  <rect width="200" height="200" fill="#f7f1e3" rx="12"/>
+  <ellipse cx="100" cy="105" rx="55" ry="38" fill="#e8f4fc" stroke="#7eb8d4" stroke-width="2"/>
+  <ellipse cx="100" cy="100" rx="45" ry="28" fill="#d4ebf7"/>
+  <rect x="92" y="128" width="16" height="35" fill="#c0c0c0" rx="2"/>
+  <rect x="130" y="60" width="35" height="45" fill="#d4ebf7" stroke="#7eb8d4" stroke-width="2" rx="3"/>
+  <text x="100" y="48" text-anchor="middle" font-family="Lexend,sans-serif" font-size="14" fill="#25424d">Bathroom</text>
+</svg>

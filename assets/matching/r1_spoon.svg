@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Spoon">
+  <rect width="200" height="200" fill="#f7f1e3" rx="12"/>
+  <ellipse cx="100" cy="58" rx="36" ry="44" fill="#c0c0c0" stroke="#8a8a8a" stroke-width="2"/>
+  <rect x="94" y="95" width="12" height="85" fill="#a8a8a8" rx="4"/>
+  <ellipse cx="100" cy="175" rx="14" ry="8" fill="#909090"/>
+</svg>

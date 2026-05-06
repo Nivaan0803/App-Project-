@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Refrigerator">
+  <rect width="200" height="200" fill="#f7f1e3" rx="12"/>
+  <rect x="55" y="45" width="90" height="115" fill="#e8f0f2" stroke="#9eb5bc" stroke-width="3" rx="4"/>
+  <line x1="100" y1="45" x2="100" y2="160" stroke="#9eb5bc" stroke-width="2"/>
+  <rect x="62" y="95" width="10" height="6" fill="#c0c0c0" rx="1"/>
+  <rect x="128" y="95" width="10" height="6" fill="#c0c0c0" rx="1"/>
+  <text x="100" y="38" text-anchor="middle" font-family="Lexend,sans-serif" font-size="13" fill="#25424d">Fridge</text>
+</svg>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Coat">
+  <rect width="200" height="200" fill="#f7f1e3" rx="12"/>
+  <path d="M65 55 L100 40 L135 55 L145 150 L55 150 Z" fill="#55707b" stroke="#25424d" stroke-width="2"/>
+  <path d="M85 55 L100 48 L115 55" fill="none" stroke="#25424d" stroke-width="2"/>
+  <circle cx="100" cy="95" r="6" fill="#cf7c4d"/>
+</svg>

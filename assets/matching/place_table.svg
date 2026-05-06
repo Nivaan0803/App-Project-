@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Table">
+  <rect width="200" height="200" fill="#f7f1e3" rx="12"/>
+  <ellipse cx="100" cy="95" rx="70" ry="22" fill="#c4a574" stroke="#8b6914" stroke-width="2"/>
+  <rect x="42" y="105" width="12" height="55" fill="#8b6914" rx="2"/>
+  <rect x="146" y="105" width="12" height="55" fill="#8b6914" rx="2"/>
+  <text x="100" y="48" text-anchor="middle" font-family="Lexend,sans-serif" font-size="14" fill="#25424d">Table</text>
+</svg>
