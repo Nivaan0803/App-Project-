@@ -3,7 +3,6 @@ import os
 from datetime import datetime
 
 import streamlit as st
-import streamlit.components.v1 as components_v1
 import streamlit.components.v2 as components
 
 try:
@@ -38,7 +37,7 @@ MEDICAL_KEYWORDS = (
 
 VOICE_RECORDER_HTML = """
 <div class="voice-recorder">
-  <button class="orb" type="button" aria-label="Start voice recording">
+  <button class="orb" type="button" aria-label="Start voice conversation">
     <span class="orb-core">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M12 15a3 3 0 0 0 3-3V7a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
@@ -48,8 +47,8 @@ VOICE_RECORDER_HTML = """
       </svg>
     </span>
   </button>
-  <div class="status" role="status">Tap the microphone and speak.</div>
-  <div class="substatus">Recording stops automatically after you stop talking.</div>
+  <div class="status" role="status">Tap once to start talking with Ben.</div>
+  <div class="substatus">Ben can keep listening and replying until you stop the conversation.</div>
 </div>
 """
 
@@ -199,43 +198,62 @@ VOICE_RECORDER_CSS = """
 
 VOICE_RECORDER_JS = """
 export default function(component) {
-  const { parentElement, setTriggerValue } = component;
+  const { parentElement, setTriggerValue, data } = component;
   const root = parentElement.querySelector('.voice-recorder');
-  if (!root || root.dataset.initialized === 'true') {
+  if (!root) {
     return;
   }
-  root.dataset.initialized = 'true';
-
   const button = root.querySelector('.orb');
   const status = root.querySelector('.status');
   const substatus = root.querySelector('.substatus');
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  let recognition = null;
-  let isListening = false;
+  const globalState = window.parent.__mindfulBenVoiceState || {
+    recognition: null,
+    isListening: false,
+    isSpeakingReply: false,
+    awaitingServerReply: false,
+    conversationActive: false,
+    currentReply: '',
+    lastReplySerial: 0,
+  };
+  window.parent.__mindfulBenVoiceState = globalState;
+  globalState.button = button;
+  globalState.status = status;
+  globalState.substatus = substatus;
+  globalState.setTriggerValue = setTriggerValue;
 
   const setIdle = () => {
     button.classList.remove('listening', 'speaking');
-    status.textContent = 'Tap the microphone and speak.';
-    substatus.textContent = 'Ben listens in your browser and sends the words to OpenAI.';
+    status.textContent = globalState.conversationActive ? 'Ben is ready for you.' : 'Tap once to start talking with Ben.';
+    substatus.textContent = globalState.conversationActive
+      ? 'Ben will listen again after each reply until you stop the conversation.'
+      : 'Hands-free conversation stays on until you tap again.';
   };
 
   const setListening = () => {
     button.classList.add('listening');
     button.classList.remove('speaking');
     status.textContent = 'Listening...';
-    substatus.textContent = 'Speak naturally. Ben will stop when you finish.';
+    substatus.textContent = 'Speak naturally. Ben will answer when you finish.';
   };
 
   const setSpeaking = () => {
     button.classList.add('listening', 'speaking');
-    status.textContent = 'Hearing you';
+    status.textContent = 'I hear you';
     substatus.textContent = 'Keep going. Ben is turning your voice into text.';
   };
 
   const setWorking = () => {
     button.classList.remove('listening', 'speaking');
     status.textContent = 'Sending to Ben...';
-    substatus.textContent = 'OpenAI is preparing a calm reply.';
+    substatus.textContent = 'Ben is getting a reply ready.';
+  };
+
+  const setReplying = () => {
+    button.classList.add('speaking');
+    button.classList.remove('listening');
+    status.textContent = 'Ben is talking';
+    substatus.textContent = 'When Ben finishes, the microphone will open again.';
   };
 
   const setUnsupported = () => {
@@ -244,24 +262,110 @@ export default function(component) {
     substatus.textContent = 'Use Chrome, Edge, or the text box below.';
   };
 
-  const stopListening = () => {
-    if (recognition && isListening) {
-      recognition.stop();
-    }
-  };
-
-  const startListening = () => {
+  const renderState = () => {
     if (!SpeechRecognition) {
       setUnsupported();
       return;
     }
 
-    recognition = new SpeechRecognition();
+    if (globalState.isSpeakingReply) {
+      setReplying();
+      return;
+    }
+
+    if (globalState.awaitingServerReply) {
+      setWorking();
+      return;
+    }
+
+    if (globalState.isListening) {
+      setListening();
+      return;
+    }
+
+    setIdle();
+  };
+
+  const stopListening = () => {
+    if (globalState.recognition && globalState.isListening) {
+      globalState.recognition.stop();
+    }
+  };
+
+  const stopConversation = () => {
+    globalState.conversationActive = false;
+    globalState.awaitingServerReply = false;
+    stopListening();
+    if ('speechSynthesis' in window.parent) {
+      window.parent.speechSynthesis.cancel();
+    }
+    globalState.isSpeakingReply = false;
+    renderState();
+  };
+
+  const speakReply = (replyText) => {
+    if (!replyText || !('speechSynthesis' in window.parent)) {
+      globalState.isSpeakingReply = false;
+      renderState();
+      if (globalState.conversationActive && !globalState.awaitingServerReply) {
+        window.setTimeout(startListening, 180);
+      }
+      return;
+    }
+
+    const synth = window.parent.speechSynthesis;
+    synth.cancel();
+    const utterance = new window.parent.SpeechSynthesisUtterance(replyText);
+    utterance.rate = 0.9;
+    utterance.pitch = 0.94;
+    utterance.volume = 1.0;
+    const voices = synth.getVoices();
+    const requestedVoiceUri = data?.selected_voice_uri || '';
+    const requestedVoiceName = data?.selected_voice_name || '';
+    const preferred = voices.find((voice) => requestedVoiceUri && voice.voiceURI === requestedVoiceUri)
+      || voices.find((voice) => requestedVoiceName && voice.name === requestedVoiceName)
+      || voices.find((voice) => /samantha|ava|allison|serena|aria|susan/i.test(voice.name))
+      || voices.find((voice) => /female|woman/i.test(`${voice.name} ${voice.voiceURI}`))
+      || voices.find((voice) => /en-us|en-gb/i.test(voice.lang))
+      || voices.find((voice) => /en/i.test(voice.lang))
+      || null;
+    if (preferred) {
+      utterance.voice = preferred;
+    }
+    utterance.onstart = () => {
+      globalState.isSpeakingReply = true;
+      renderState();
+    };
+    utterance.onend = () => {
+      globalState.isSpeakingReply = false;
+      renderState();
+      if (globalState.conversationActive && !globalState.awaitingServerReply) {
+        window.setTimeout(startListening, 220);
+      }
+    };
+    utterance.onerror = () => {
+      globalState.isSpeakingReply = false;
+      renderState();
+      if (globalState.conversationActive && !globalState.awaitingServerReply) {
+        window.setTimeout(startListening, 220);
+      }
+    };
+    synth.speak(utterance);
+  };
+
+  const startListening = () => {
+    if (!SpeechRecognition || globalState.isListening || globalState.awaitingServerReply || globalState.isSpeakingReply) {
+      renderState();
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    globalState.recognition = recognition;
     recognition.lang = 'en-US';
     recognition.interimResults = true;
     recognition.continuous = false;
     let finalTranscript = '';
-    isListening = true;
+    globalState.isListening = true;
     setListening();
 
     recognition.onresult = (event) => {
@@ -280,46 +384,76 @@ export default function(component) {
     };
 
     recognition.onerror = (event) => {
-      isListening = false;
+      globalState.isListening = false;
       button.classList.remove('listening', 'speaking');
       if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
         status.textContent = 'Microphone access was blocked.';
         substatus.textContent = 'Allow microphone access and try again.';
+        globalState.conversationActive = false;
+      } else if (event.error === 'aborted') {
+        renderState();
       } else {
         status.textContent = 'Ben could not hear that clearly.';
-        substatus.textContent = 'Please try again or use the text box below.';
+        substatus.textContent = globalState.conversationActive
+          ? 'Ben will keep the conversation open. Try again when you are ready.'
+          : 'Please try again or use the text box below.';
       }
     };
 
     recognition.onend = () => {
       const transcript = finalTranscript.trim();
-      isListening = false;
+      globalState.isListening = false;
       if (!transcript) {
-        setIdle();
+        renderState();
+        if (globalState.conversationActive && !globalState.awaitingServerReply && !globalState.isSpeakingReply) {
+          window.setTimeout(startListening, 260);
+        }
         return;
       }
+      globalState.awaitingServerReply = true;
       setWorking();
       setTriggerValue('transcript_payload', {
         transcript,
         source: 'speech_recognition',
+        conversation_active: globalState.conversationActive,
+        timestamp: Date.now(),
       });
     };
 
     recognition.start();
   };
 
-  button.addEventListener('click', () => {
-    if (isListening) {
-      stopListening();
-      return;
-    }
-    startListening();
-  });
+  if (!root.dataset.initialized) {
+    root.dataset.initialized = 'true';
+    button.addEventListener('click', () => {
+      globalState.conversationActive = !globalState.conversationActive;
+      if (!globalState.conversationActive) {
+        stopConversation();
+        return;
+      }
+      if (globalState.awaitingServerReply || globalState.isSpeakingReply) {
+        renderState();
+        return;
+      }
+      startListening();
+    });
+  }
 
-  if (!SpeechRecognition) {
-    setUnsupported();
+  globalState.awaitingServerReply = Boolean(data?.awaiting_server_reply);
+  globalState.conversationActive = Boolean(data?.conversation_active);
+  globalState.currentReply = data?.reply_text || '';
+  if ((data?.reply_serial || 0) !== globalState.lastReplySerial) {
+    globalState.lastReplySerial = data?.reply_serial || 0;
+    if (globalState.currentReply) {
+      speakReply(globalState.currentReply);
+    } else {
+      renderState();
+    }
   } else {
-    setIdle();
+    renderState();
+    if (globalState.conversationActive && !globalState.awaitingServerReply && !globalState.isListening && !globalState.isSpeakingReply) {
+      window.setTimeout(startListening, 120);
+    }
   }
 
   return () => {
@@ -346,9 +480,13 @@ def init_session():
     st.session_state.setdefault("familiar_greeting", defaults["familiar_greeting"])
     st.session_state.setdefault("show_familiar_greeting", defaults["show_familiar_greeting"])
     st.session_state.setdefault("text_size", defaults["text_size"])
+    st.session_state.setdefault("ben_voice_uri", defaults["ben_voice_uri"])
+    st.session_state.setdefault("ben_voice_name", defaults["ben_voice_name"])
     st.session_state.setdefault("bob_messages", [])
     st.session_state.setdefault("bob_last_transcript", "")
     st.session_state.setdefault("bob_last_reply_text", "")
+    st.session_state.setdefault("bob_reply_serial", 0)
+    st.session_state.setdefault("bob_voice_conversation_active", False)
 
 
 def apply_styles():
@@ -1139,10 +1277,10 @@ def bob_instructions(user):
     support_phone = profile.get("support_phone") or "no support phone saved"
     support_email = profile.get("support_email") or "no support email saved"
     return f"""
-You are Ben, a calm, warm, agentic AI voice companion for an older adult living with dementia.
+You are Ben, a warm, friendly, smooth-talking AI voice companion for an older adult living with dementia.
 
 Your job:
-- Speak in short, gentle, reassuring sentences.
+- Speak in short, gentle, reassuring sentences that sound natural out loud.
 - Be proactive and practical. If the user seems unsure, suggest the next best small step.
 - Help with orientation, reminders, companionship, simple step-by-step help, and emotional support.
 - If the user seems confused, slow down and give one step at a time.
@@ -1153,6 +1291,8 @@ Your job:
 - If the user asks for medical advice, medication advice, symptom interpretation, or diagnosis, clearly say that you are not a medical assistant and they should speak with a doctor or call emergency services if it is urgent.
 - Be encouraging, patient, practical, and non-judgmental.
 - Avoid dense paragraphs and avoid complicated language.
+- Keep most replies to 2 or 3 short sentences unless the user asks for more detail.
+- Sound like a caring conversation partner, not a scripted assistant.
 - If useful, offer options like: "Would you like me to repeat that?" or "Would you like one step at a time?"
 - The user's name is {user.get("full_name", "friend")}.
 - Today's date is {datetime.now().strftime("%B %d, %Y")}.
@@ -1189,7 +1329,7 @@ def generate_bob_reply(client, user, user_text: str) -> tuple[str, str]:
 
     response = client.chat.completions.create(
         model=BOB_MODEL,
-        max_tokens=450,
+        max_tokens=180,
         messages=history,
     )
     reply_text = (response.choices[0].message.content or "").strip()
@@ -1201,6 +1341,8 @@ def clear_bob_chat():
     st.session_state.bob_messages = []
     st.session_state.bob_last_transcript = ""
     st.session_state.bob_last_reply_text = ""
+    st.session_state.bob_reply_serial = 0
+    st.session_state.bob_voice_conversation_active = False
 
 
 def process_bob_turn(user, user_text: str) -> bool:
@@ -1234,6 +1376,7 @@ def process_bob_turn(user, user_text: str) -> bool:
         return False
 
     st.session_state.bob_last_reply_text = reply_text
+    st.session_state.bob_reply_serial += 1
     st.session_state.bob_messages.append({"role": "assistant", "content": reply_text})
     return True
 
@@ -1255,6 +1398,8 @@ def process_recording_if_needed(user, transcript_payload):
         return
 
     st.session_state.bob_last_transcript = transcript
+    if isinstance(transcript_payload, dict):
+        st.session_state.bob_voice_conversation_active = bool(transcript_payload.get("conversation_active"))
     if process_bob_turn(user, transcript):
         st.rerun()
 
@@ -1264,7 +1409,7 @@ def render_hero():
         """
         <div class="voice-shell">
             <div class="voice-badge">
-                <span>AI Voice Agent - Live</span>
+                <span>Mindful Voice Companion</span>
                 <span class="voice-wave">
                     <span></span><span></span><span></span><span></span><span></span><span></span>
                 </span>
@@ -1283,14 +1428,14 @@ def render_hero():
                 <div>
                     <div class="hero-title">
                         Talk to Ben.
-                        <span class="hero-title-accent">A calming dementia-friendly companion.</span>
+                        <span class="hero-title-accent">A friendly voice inside Mindful.</span>
                     </div>
                     <p class="hero-copy">
                         Start a voice conversation with Ben. Speak naturally, and Ben listens, responds clearly,
                         and helps with memory, orientation, and gentle next steps.
                     </p>
                     <p class="hero-subcopy">
-                        Built for reassurance: slower replies, simple language, and one idea at a time when that feels easier.
+                        Built for reassurance: friendly replies, simple language, and a hands-free conversation that can keep going.
                     </p>
                     <div class="feature-row">
                         <div class="feature-pill"><span>+</span> Voice-first and easy to use</div>
@@ -1309,6 +1454,14 @@ def render_voice_panel(user):
     st.markdown("<div class='voice-input-wrap'><div class='voice-input-shell'>", unsafe_allow_html=True)
     recorder_result = VOICE_RECORDER_COMPONENT(
         key="bob_voice_recorder_component",
+        data={
+            "conversation_active": st.session_state.bob_voice_conversation_active,
+            "reply_text": st.session_state.bob_last_reply_text,
+            "reply_serial": st.session_state.bob_reply_serial,
+            "awaiting_server_reply": False,
+            "selected_voice_uri": st.session_state.ben_voice_uri,
+            "selected_voice_name": st.session_state.ben_voice_name,
+        },
         height=300,
         on_transcript_payload_change=lambda: None,
     )
@@ -1331,58 +1484,16 @@ def render_reply_panel():
         return
 
     safe_reply_text = html.escape(reply_text)
-    speech_payload = html.escape(reply_text, quote=True)
     st.markdown(
         f"""
         <div class="panel">
-            <div class="panel-title">Ben is speaking back</div>
-            <div class="panel-copy">The browser reads the latest reply out loud. Use the replay button to hear it again.</div>
+            <div class="panel-title">Ben's latest reply</div>
+            <div class="panel-copy">Ben speaks this out loud automatically during voice conversation.</div>
             <div class="reply-player">
                 <div class="message-copy">{safe_reply_text}</div>
-                <div style="height: 0.75rem;"></div>
-                <button id="ben-replay-button" type="button" style="width:100%;min-height:3.1rem;border:none;border-radius:18px;background:#0aa8bc;color:#fff;font-weight:800;font-size:1rem;cursor:pointer;">Replay Ben's Voice</button>
             </div>
         """,
         unsafe_allow_html=True,
-    )
-    components_v1.html(
-        f"""
-        <div id="ben-speech-anchor" data-reply="{speech_payload}"></div>
-        <script>
-        const anchor = document.getElementById("ben-speech-anchor");
-        const reply = anchor?.dataset.reply || "";
-        const replayButton = window.parent.document.getElementById("ben-replay-button");
-        const speakReply = () => {{
-          if (!reply || !("speechSynthesis" in window.parent)) {{
-            return;
-          }}
-          const synth = window.parent.speechSynthesis;
-          synth.cancel();
-          const utterance = new window.parent.SpeechSynthesisUtterance(reply);
-          utterance.rate = 0.88;
-          utterance.pitch = 1.0;
-          utterance.volume = 1.0;
-          const voices = synth.getVoices();
-          const preferred = voices.find((voice) => /samantha|karen|zira|aria|susan/i.test(voice.name)) || voices.find((voice) => /en/i.test(voice.lang)) || null;
-          if (preferred) {{
-            utterance.voice = preferred;
-          }}
-          synth.speak(utterance);
-        }};
-
-        const speechKey = "ben-last-spoken-reply";
-        if (window.parent.localStorage.getItem(speechKey) !== reply) {{
-          window.parent.localStorage.setItem(speechKey, reply);
-          window.setTimeout(speakReply, 120);
-        }}
-
-        if (replayButton && !replayButton.dataset.boundSpeech) {{
-          replayButton.dataset.boundSpeech = "true";
-          replayButton.addEventListener("click", speakReply);
-        }}
-        </script>
-        """,
-        height=0,
     )
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -1397,7 +1508,7 @@ def render_chat_history():
                     <div class="chat-title">Conversation with Ben</div>
                     <div class="chat-subtitle">A calmer back-and-forth that reads like a real chat.</div>
                 </div>
-                <div class="chat-status">Ben is ready</div>
+                <div class="chat-status">Mindful voice ready</div>
             </div>
             <div class='conversation-shell'>
         """,
@@ -1486,7 +1597,7 @@ def render_page(user):
 
 
 def main():
-    st.set_page_config(page_title="Ben", page_icon=":microphone:", layout="wide")
+    st.set_page_config(page_title="Mindful | Ben", page_icon=":microphone:", layout="wide")
     init_session()
     if not st.session_state.logged_in or not st.session_state.username:
         st.switch_page("login.py")

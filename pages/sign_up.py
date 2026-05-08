@@ -209,7 +209,7 @@ apply_button_feedback()
 
 st.markdown("<div class='signup-shell'>", unsafe_allow_html=True)
 st.markdown("<div class='eyebrow'>Create a calm care account</div>", unsafe_allow_html=True)
-st.markdown("<div class='hero-title'>Set up Memory Lane Companion</div>", unsafe_allow_html=True)
+st.markdown("<div class='hero-title'>Set up Mindful</div>", unsafe_allow_html=True)
 st.markdown(
     "<div class='hero-copy'>Create one account, then add reminders and support tools after login.</div>",
     unsafe_allow_html=True,

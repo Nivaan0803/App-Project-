@@ -111,7 +111,7 @@ def send_password_reset_email(recipient_email: str, reset_code: str):
     smtp_username = _secret_or_env("SMTP_USERNAME")
     smtp_password = _secret_or_env("SMTP_PASSWORD")
     from_email = _secret_or_env("SMTP_FROM_EMAIL", smtp_username)
-    from_name = _secret_or_env("SMTP_FROM_NAME", "Memory Lane Companion")
+    from_name = _secret_or_env("SMTP_FROM_NAME", "Mindful")
     use_tls = _to_bool(_secret_or_env("SMTP_USE_TLS", "true"), default=True)
     use_ssl = _to_bool(_secret_or_env("SMTP_USE_SSL", "false"))
 
@@ -119,13 +119,13 @@ def send_password_reset_email(recipient_email: str, reset_code: str):
         return False, "Email sending is not configured yet. Add SMTP settings before using password reset."
 
     message = EmailMessage()
-    message["Subject"] = "Your Memory Lane Companion password reset code"
+    message["Subject"] = "Your Mindful password reset code"
     message["From"] = f"{from_name} <{from_email}>"
     message["To"] = recipient_email
     message.set_content(
         "\n".join(
             [
-                "A password reset was requested for your Memory Lane Companion account.",
+                "A password reset was requested for your Mindful account.",
                 "",
                 f"Your reset code is: {reset_code}",
                 f"This code expires in {RESET_CODE_EXPIRY_MINUTES} minutes.",
@@ -917,7 +917,7 @@ def render_password_reset():
 
 def login_view():
     render_hero(
-        "Memory Lane Companion",
+        "Mindful",
         "A warm Streamlit space for seniors with dementia: simple check-ins, gentle puzzles, and reminders that family can update.",
     )
     top_nav("login")
@@ -1508,7 +1508,7 @@ def dashboard_view():
 
 
 def main():
-    st.set_page_config(page_title="Memory Lane Companion", page_icon=":sunflower:", layout="wide")
+    st.set_page_config(page_title="Mindful", page_icon=":sunflower:", layout="wide")
     init_session()
     apply_styles()
     apply_button_feedback()

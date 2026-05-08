@@ -32,6 +32,8 @@ def default_settings():
         "familiar_greeting": "",
         "show_familiar_greeting": True,
         "text_size": "Standard",
+        "ben_voice_uri": "",
+        "ben_voice_name": "",
     }
 
 
@@ -43,6 +45,8 @@ def normalize_settings(settings):
         normalized["text_size"] = "Standard"
     normalized["familiar_greeting"] = str(normalized.get("familiar_greeting", "")).strip()
     normalized["show_familiar_greeting"] = bool(normalized.get("show_familiar_greeting", True))
+    normalized["ben_voice_uri"] = str(normalized.get("ben_voice_uri", "")).strip()
+    normalized["ben_voice_name"] = str(normalized.get("ben_voice_name", "")).strip()
     return normalized
 
 
@@ -57,6 +61,8 @@ def apply_user_settings_to_session(session_state, user):
     session_state.familiar_greeting = settings["familiar_greeting"]
     session_state.show_familiar_greeting = settings["show_familiar_greeting"]
     session_state.text_size = settings["text_size"]
+    session_state.ben_voice_uri = settings["ben_voice_uri"]
+    session_state.ben_voice_name = settings["ben_voice_name"]
     return settings
 
 

@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v2 as components
 
 from auth_store import get_user, save_settings
 from ui_preferences import (
@@ -7,6 +8,229 @@ from ui_preferences import (
     build_theme_css,
     default_settings,
     normalize_settings,
+)
+
+
+VOICE_PICKER_HTML = """
+<div class="voice-picker">
+  <div class="voice-picker-header">
+    <div class="voice-picker-title">Ben voice</div>
+    <div class="voice-picker-copy">Pick a voice and preview it before saving.</div>
+  </div>
+  <div class="voice-picker-list"></div>
+</div>
+"""
+
+
+VOICE_PICKER_CSS = """
+:host {
+  display: block;
+}
+
+.voice-picker {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.voice-picker-title {
+  font-family: 'Nunito', sans-serif;
+  font-size: 1.08rem;
+  font-weight: 800;
+  color: #123848;
+}
+
+.voice-picker-copy {
+  margin-top: 0.2rem;
+  color: #5a7480;
+  font-size: 0.94rem;
+}
+
+.voice-picker-list {
+  display: grid;
+  gap: 0.75rem;
+  max-height: 360px;
+  overflow-y: auto;
+  padding-right: 0.15rem;
+}
+
+.voice-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.9rem;
+  align-items: center;
+  padding: 0.95rem 1rem;
+  border-radius: 18px;
+  border: 1px solid rgba(80, 182, 198, 0.18);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 10px 24px rgba(14, 74, 84, 0.05);
+}
+
+.voice-card.selected {
+  border-color: #0da8bc;
+  box-shadow: 0 0 0 2px rgba(13, 168, 188, 0.14);
+  background: linear-gradient(135deg, rgba(13, 168, 188, 0.10), rgba(255, 255, 255, 0.98));
+}
+
+.voice-name {
+  color: #123848;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.voice-meta {
+  margin-top: 0.2rem;
+  color: #5a7480;
+  font-size: 0.9rem;
+}
+
+.voice-actions {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.voice-actions button {
+  min-height: 2.5rem;
+  border: none;
+  border-radius: 14px;
+  padding: 0.65rem 0.95rem;
+  font-size: 0.92rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.voice-use {
+  background: linear-gradient(135deg, #0da8bc 0%, #087e93 100%);
+  color: #fff;
+}
+
+.voice-preview {
+  background: rgba(230, 247, 249, 0.96);
+  color: #0b899d;
+}
+
+.voice-empty {
+  padding: 1rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #5a7480;
+  border: 1px dashed rgba(80, 182, 198, 0.22);
+}
+
+@media (max-width: 700px) {
+  .voice-card {
+    grid-template-columns: 1fr;
+  }
+
+  .voice-actions {
+    justify-content: stretch;
+  }
+
+  .voice-actions button {
+    flex: 1 1 0;
+  }
+}
+"""
+
+
+VOICE_PICKER_JS = """
+export default function(component) {
+  const { parentElement, data, setStateValue } = component;
+  const root = parentElement.querySelector('.voice-picker');
+  if (!root) {
+    return;
+  }
+
+  const list = root.querySelector('.voice-picker-list');
+  const synth = window.parent.speechSynthesis;
+  const selectedVoiceUri = data?.selected_voice_uri || '';
+  const selectedVoiceName = data?.selected_voice_name || '';
+
+  const speakPreview = (voice) => {
+    if (!synth) {
+      return;
+    }
+    synth.cancel();
+    const utterance = new window.parent.SpeechSynthesisUtterance(`Hi, I am ${voice.name}.`);
+    utterance.rate = 0.92;
+    utterance.pitch = 0.98;
+    utterance.volume = 1.0;
+    utterance.voice = voice;
+    synth.speak(utterance);
+  };
+
+  const setSelected = (voice) => {
+    setStateValue('selected_voice_uri', voice.voiceURI || '');
+    setStateValue('selected_voice_name', voice.name || '');
+  };
+
+  const renderVoices = () => {
+    if (!list) {
+      return;
+    }
+    const allVoices = synth ? synth.getVoices() : [];
+    const voices = allVoices
+      .filter((voice) => /en/i.test(voice.lang || '') || /english/i.test(voice.name || ''))
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+    if (!voices.length) {
+      list.innerHTML = '<div class="voice-empty">No browser voices are available yet. Try Chrome or Edge, then reopen this page.</div>';
+      return;
+    }
+
+    list.innerHTML = '';
+    voices.forEach((voice) => {
+      const card = document.createElement('div');
+      const isSelected = (selectedVoiceUri && voice.voiceURI === selectedVoiceUri)
+        || (!selectedVoiceUri && selectedVoiceName && voice.name === selectedVoiceName);
+      card.className = `voice-card${isSelected ? ' selected' : ''}`;
+
+      const info = document.createElement('div');
+      info.innerHTML = `
+        <div class="voice-name">${voice.name}</div>
+        <div class="voice-meta">${voice.lang || 'Unknown language'}${voice.default ? ' · Browser default' : ''}</div>
+      `;
+
+      const actions = document.createElement('div');
+      actions.className = 'voice-actions';
+
+      const useButton = document.createElement('button');
+      useButton.type = 'button';
+      useButton.className = 'voice-use';
+      useButton.textContent = isSelected ? 'Selected' : 'Use voice';
+      useButton.addEventListener('click', () => setSelected(voice));
+
+      const previewButton = document.createElement('button');
+      previewButton.type = 'button';
+      previewButton.className = 'voice-preview';
+      previewButton.textContent = 'Preview';
+      previewButton.addEventListener('click', () => speakPreview(voice));
+
+      actions.appendChild(useButton);
+      actions.appendChild(previewButton);
+      card.appendChild(info);
+      card.appendChild(actions);
+      list.appendChild(card);
+    });
+  };
+
+  renderVoices();
+  if (synth && !window.parent.__mindfulVoicePickerBound) {
+    window.parent.__mindfulVoicePickerBound = true;
+    synth.onvoiceschanged = () => {
+      renderVoices();
+    };
+  }
+}
+"""
+
+
+VOICE_PICKER_COMPONENT = components.component(
+    "mindful_voice_picker",
+    html=VOICE_PICKER_HTML,
+    css=VOICE_PICKER_CSS,
+    js=VOICE_PICKER_JS,
 )
 
 
@@ -19,6 +243,8 @@ def init_session():
     st.session_state.setdefault("familiar_greeting", defaults["familiar_greeting"])
     st.session_state.setdefault("show_familiar_greeting", defaults["show_familiar_greeting"])
     st.session_state.setdefault("text_size", defaults["text_size"])
+    st.session_state.setdefault("ben_voice_uri", defaults["ben_voice_uri"])
+    st.session_state.setdefault("ben_voice_name", defaults["ben_voice_name"])
 
 
 def apply_styles():
@@ -74,6 +300,12 @@ def apply_styles():
             grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 0.9rem;
             margin-top: 0.7rem;
+        }
+
+        .voice-selected-note {
+            margin-top: 0.8rem;
+            color: #5a7480;
+            font-size: 0.95rem;
         }
 
         .theme-preview {
@@ -133,6 +365,14 @@ def apply_user_settings(user):
     return apply_user_settings_to_session(st.session_state, user)
 
 
+def component_value(result, name: str):
+    if result is None:
+        return None
+    if isinstance(result, dict):
+        return result.get(name)
+    return getattr(result, name, None)
+
+
 def render_theme_previews():
     st.markdown("<div class='theme-preview-grid'>", unsafe_allow_html=True)
     descriptions = {
@@ -185,19 +425,47 @@ def main():
     render_theme_previews()
     st.markdown("</div>", unsafe_allow_html=True)
 
-    with st.form("settings_form"):
-        st.markdown("<div class='panel'>", unsafe_allow_html=True)
-        selected_theme = st.selectbox("Background theme", list(THEME_OPTIONS.keys()), index=list(THEME_OPTIONS.keys()).index(settings["background_theme"]))
-        familiar_greeting = st.text_area(
-            "Familiar greeting",
-            value=settings["familiar_greeting"],
-            height=110,
-            placeholder="Hi Mom, we're thinking of you and cheering you on today.",
+    st.markdown("<div class='panel'>", unsafe_allow_html=True)
+    voice_result = VOICE_PICKER_COMPONENT(
+        key="mindful_voice_picker_component",
+        data={
+            "selected_voice_uri": st.session_state.ben_voice_uri,
+            "selected_voice_name": st.session_state.ben_voice_name,
+        },
+        height=420,
+        on_selected_voice_uri_change=lambda: None,
+        on_selected_voice_name_change=lambda: None,
+    )
+    selected_voice_uri = component_value(voice_result, "selected_voice_uri")
+    selected_voice_name = component_value(voice_result, "selected_voice_name")
+    if selected_voice_uri is not None:
+        st.session_state.ben_voice_uri = str(selected_voice_uri)
+    if selected_voice_name is not None:
+        st.session_state.ben_voice_name = str(selected_voice_name)
+    if st.session_state.ben_voice_name:
+        st.markdown(
+            f"<div class='voice-selected-note'>Current choice: <strong>{st.session_state.ben_voice_name}</strong></div>",
+            unsafe_allow_html=True,
         )
-        show_greeting = st.toggle("Show familiar greeting on dashboard", value=settings["show_familiar_greeting"])
-        text_size = st.selectbox("Text size", ["Standard", "Large"], index=0 if settings["text_size"] == "Standard" else 1)
-        submitted = st.form_submit_button("Save Settings", use_container_width=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+    else:
+        st.markdown(
+            "<div class='voice-selected-note'>Current choice: browser default voice</div>",
+            unsafe_allow_html=True,
+        )
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown("<div class='panel'>", unsafe_allow_html=True)
+    selected_theme = st.selectbox("Background theme", list(THEME_OPTIONS.keys()), index=list(THEME_OPTIONS.keys()).index(settings["background_theme"]))
+    familiar_greeting = st.text_area(
+        "Familiar greeting",
+        value=settings["familiar_greeting"],
+        height=110,
+        placeholder="Hi Mom, we're thinking of you and cheering you on today.",
+    )
+    show_greeting = st.toggle("Show familiar greeting on dashboard", value=settings["show_familiar_greeting"])
+    text_size = st.selectbox("Text size", ["Standard", "Large"], index=0 if settings["text_size"] == "Standard" else 1)
+    submitted = st.button("Save Settings", use_container_width=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
     if submitted:
         updated_settings = normalize_settings(
@@ -206,6 +474,8 @@ def main():
                 "familiar_greeting": familiar_greeting,
                 "show_familiar_greeting": show_greeting,
                 "text_size": text_size,
+                "ben_voice_uri": st.session_state.ben_voice_uri,
+                "ben_voice_name": st.session_state.ben_voice_name,
             }
         )
         if save_settings(st.session_state.username, updated_settings):
@@ -213,6 +483,8 @@ def main():
             st.session_state.familiar_greeting = updated_settings["familiar_greeting"]
             st.session_state.show_familiar_greeting = updated_settings["show_familiar_greeting"]
             st.session_state.text_size = updated_settings["text_size"]
+            st.session_state.ben_voice_uri = updated_settings["ben_voice_uri"]
+            st.session_state.ben_voice_name = updated_settings["ben_voice_name"]
             st.success("Settings saved.")
             st.rerun()
         else:
