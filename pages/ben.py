@@ -316,19 +316,11 @@ export default function(component) {
     const synth = window.parent.speechSynthesis;
     synth.cancel();
     const utterance = new window.parent.SpeechSynthesisUtterance(replyText);
-    utterance.rate = 0.9;
-    utterance.pitch = 0.94;
+    utterance.rate = 0.88;
+    utterance.pitch = 0.86;
     utterance.volume = 1.0;
     const voices = synth.getVoices();
-    const requestedVoiceUri = data?.selected_voice_uri || '';
-    const requestedVoiceName = data?.selected_voice_name || '';
-    const preferred = voices.find((voice) => requestedVoiceUri && voice.voiceURI === requestedVoiceUri)
-      || voices.find((voice) => requestedVoiceName && voice.name === requestedVoiceName)
-      || voices.find((voice) => /samantha|ava|allison|serena|aria|susan/i.test(voice.name))
-      || voices.find((voice) => /female|woman/i.test(`${voice.name} ${voice.voiceURI}`))
-      || voices.find((voice) => /en-us|en-gb/i.test(voice.lang))
-      || voices.find((voice) => /en/i.test(voice.lang))
-      || null;
+    const preferred = voices.find((voice) => /daniel/i.test(`${voice.name} ${voice.voiceURI}`)) || null;
     if (preferred) {
       utterance.voice = preferred;
     }
@@ -480,8 +472,6 @@ def init_session():
     st.session_state.setdefault("familiar_greeting", defaults["familiar_greeting"])
     st.session_state.setdefault("show_familiar_greeting", defaults["show_familiar_greeting"])
     st.session_state.setdefault("text_size", defaults["text_size"])
-    st.session_state.setdefault("ben_voice_uri", defaults["ben_voice_uri"])
-    st.session_state.setdefault("ben_voice_name", defaults["ben_voice_name"])
     st.session_state.setdefault("bob_messages", [])
     st.session_state.setdefault("bob_last_transcript", "")
     st.session_state.setdefault("bob_last_reply_text", "")
@@ -1459,8 +1449,6 @@ def render_voice_panel(user):
             "reply_text": st.session_state.bob_last_reply_text,
             "reply_serial": st.session_state.bob_reply_serial,
             "awaiting_server_reply": False,
-            "selected_voice_uri": st.session_state.ben_voice_uri,
-            "selected_voice_name": st.session_state.ben_voice_name,
         },
         height=300,
         on_transcript_payload_change=lambda: None,
