@@ -80,7 +80,7 @@ def apply_sidebar_styles():
 def main():
     init_session()
     st.set_page_config(
-        page_title="Memory Lane Companion",
+        page_title="Mindful",
         page_icon=":sunflower:",
         layout="wide",
         initial_sidebar_state="expanded",
