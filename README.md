@@ -13,3 +13,5 @@ Run it with:
 ```bash
 streamlit run main.py
 ```
+
+Lastly, the app can be accessed online at https://m1ndful.streamlit.app/
